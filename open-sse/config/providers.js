@@ -3,20 +3,29 @@ import { platform, arch } from "os";
 // === OS/Arch helpers ===
 function mapStainlessOs() {
   switch (platform()) {
-    case "darwin": return "MacOS";
-    case "win32": return "Windows";
-    case "linux": return "Linux";
-    case "freebsd": return "FreeBSD";
-    default: return `Other::${platform()}`;
+    case "darwin":
+      return "MacOS";
+    case "win32":
+      return "Windows";
+    case "linux":
+      return "Linux";
+    case "freebsd":
+      return "FreeBSD";
+    default:
+      return `Other::${platform()}`;
   }
 }
 
 function mapStainlessArch() {
   switch (arch()) {
-    case "x64": return "x64";
-    case "arm64": return "arm64";
-    case "ia32": return "x86";
-    default: return `other::${arch()}`;
+    case "x64":
+      return "x64";
+    case "arm64":
+      return "arm64";
+    case "ia32":
+      return "x86";
+    default:
+      return `other::${arch()}`;
   }
 }
 
@@ -35,7 +44,8 @@ export const PROVIDERS = {
     format: "claude",
     headers: {
       "Anthropic-Version": "2023-06-01",
-      "Anthropic-Beta": "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05,advanced-tool-use-2025-11-20,effort-2025-11-24,structured-outputs-2025-12-15,fast-mode-2026-02-01,redact-thinking-2026-02-12,token-efficient-tools-2026-03-28",
+      "Anthropic-Beta":
+        "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05,advanced-tool-use-2025-11-20,effort-2025-11-24,structured-outputs-2025-12-15,fast-mode-2026-02-01,redact-thinking-2026-02-12,token-efficient-tools-2026-03-28",
       "Anthropic-Dangerous-Direct-Browser-Access": "true",
       "User-Agent": "claude-cli/2.1.92 (external, sdk-cli)",
       "X-App": "cli",
@@ -68,7 +78,7 @@ export const PROVIDERS = {
     baseUrl: "https://chatgpt.com/backend-api/codex/responses",
     format: "openai-responses",
     headers: {
-      "originator": "codex-cli",
+      originator: "codex-cli",
       "User-Agent": "codex-cli/1.0.18 (macOS; arm64)"
     },
     clientId: "app_EMoamEEZ73f0CkXaXp7hrann",
@@ -95,14 +105,16 @@ export const PROVIDERS = {
     format: "openai",
     headers: { "User-Agent": "Qoder-Cli" },
     clientId: process.env.QODER_OAUTH_CLIENT_ID || "10009311001",
-    clientSecret: process.env.QODER_OAUTH_CLIENT_SECRET || "4Z3YjXycVsQvyGF1etiNlIBB4RsqSDtW",
+    clientSecret:
+      process.env.QODER_OAUTH_CLIENT_SECRET ||
+      "4Z3YjXycVsQvyGF1etiNlIBB4RsqSDtW",
     tokenUrl: "https://api.qoder.com/oauth/token",
     authUrl: "https://qoder.com/oauth/authorize"
   },
   antigravity: {
     baseUrls: [
       "https://daily-cloudcode-pa.googleapis.com",
-      "https://daily-cloudcode-pa.sandbox.googleapis.com",
+      "https://daily-cloudcode-pa.sandbox.googleapis.com"
     ],
     format: "antigravity",
     headers: { "User-Agent": `antigravity/1.107.0 ${platform()}/${arch()}` },
@@ -162,7 +174,8 @@ export const PROVIDERS = {
     headers: {}
   },
   byteplus: {
-    baseUrl: "https://ark.ap-southeast.bytepluses.com/api/coding/v3/chat/completions",
+    baseUrl:
+      "https://ark.ap-southeast.bytepluses.com/api/coding/v3/chat/completions",
     format: "openai",
     headers: {}
   },
@@ -179,19 +192,21 @@ export const PROVIDERS = {
       "x-github-api-version": "2025-04-01",
       "x-vscode-user-agent-library-version": "electron-fetch",
       "X-Initiator": "user",
-      "Accept": "application/json",
+      Accept: "application/json",
       "Content-Type": "application/json"
     },
     clientId: "Iv1.b507a08c87ecfe98"
   },
   kiro: {
-    baseUrl: "https://codewhisperer.us-east-1.amazonaws.com/generateAssistantResponse",
+    baseUrl:
+      "https://codewhisperer.us-east-1.amazonaws.com/generateAssistantResponse",
     format: "kiro",
     retry: { 429: 2 },
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/vnd.amazon.eventstream",
-      "X-Amz-Target": "AmazonCodeWhispererStreamingService.GenerateAssistantResponse",
+      Accept: "application/vnd.amazon.eventstream",
+      "X-Amz-Target":
+        "AmazonCodeWhispererStreamingService.GenerateAssistantResponse",
       "User-Agent": "AWS-SDK-JS/3.0.0 kiro-ide/1.0.0",
       "X-Amz-User-Agent": "aws-sdk-js/3.0.0 kiro-ide/1.0.0"
     },
@@ -338,12 +353,12 @@ export const PROVIDERS = {
   // GitLab Duo - OpenAI-compatible chat endpoint
   gitlab: {
     baseUrl: "https://gitlab.com/api/v4/chat/completions",
-    format: "openai",
+    format: "openai"
   },
   // CodeBuddy (Tencent) - uses device_code polling auth, no chat completions baseUrl needed
   codebuddy: {
     baseUrl: "https://copilot.tencent.com/v1/chat/completions",
-    format: "openai",
+    format: "openai"
   },
   opencode: {
     baseUrl: "https://opencode.ai",
@@ -373,13 +388,14 @@ export const PROVIDERS = {
   },
   // Cloudflare Workers AI - {accountId} resolved from credentials.providerSpecificData.accountId
   "cloudflare-ai": {
-    baseUrl: "https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions",
+    baseUrl:
+      "https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions",
     format: "openai"
   },
   "xiaomi-mimo": {
     baseUrl: "https://api.xiaomimimo.com/v1/chat/completions",
     format: "openai"
-  },
+  }
 };
 
 export const OLLAMA_LOCAL_DEFAULT_HOST = "http://localhost:11434";
