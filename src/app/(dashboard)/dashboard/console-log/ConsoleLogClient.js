@@ -18,20 +18,29 @@ function colorLine(line) {
   const levelTag = match?.find((tag) => LOG_LEVEL_COLORS[tag.replace(/\[|\]/g, "")])?.replace(/\[|\]/g, "") || null;
   const color = LOG_LEVEL_COLORS[levelTag] || "text-green-400";
 
-  // Highlight "Model: model-name" or "Model: provider/model-name"
-  const modelMatch = line.match(/(Model:\s+)([a-zA-Z0-9.\-_/]+)/);
-  if (modelMatch) {
-    const [fullMatch, prefix, modelName] = modelMatch;
-    const parts = line.split(fullMatch);
-    return (
-      <span className={color}>
-        {parts[0]}
-        {prefix}
-        <span className="text-yellow-400">{modelName}</span>
-        {parts.slice(1).join(fullMatch)}
-      </span>
-    );
+  // Unified regex to catch model names in various contexts
+  const modelRegex = /(Model:\s+|model[=:]\s*|Trying model \d+\/\d+:\s+|\[STREAM\]\s+[A-Z0-9_-]+\s+\|\s+|\[ROUTING\]\s+|→\s+|(?:^|\s)Model\s+)([a-zA-Z0-9.\-_/]+)/gi;
+
+  const parts = [];
+  let lastIndex = 0;
+  let m;
+
+  while ((m = modelRegex.exec(line)) !== null) {
+    if (m.index > lastIndex) {
+      parts.push(line.substring(lastIndex, m.index));
+    }
+    parts.push(m[1]);
+    parts.push(<span key={m.index} className="text-yellow-400">{m[2]}</span>);
+    lastIndex = modelRegex.lastIndex;
   }
+  parts.push(line.substring(lastIndex));
+
+  return (
+    <span className={color}>
+      {parts.map((part, i) => (typeof part === "string" ? part : <span key={i}>{part}</span>))}
+    </span>
+  );
+}
 
   return <span className={color}>{line}</span>;
 }
