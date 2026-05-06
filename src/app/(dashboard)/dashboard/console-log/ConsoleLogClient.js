@@ -42,9 +42,6 @@ function colorLine(line) {
   );
 }
 
-  return <span className={color}>{line}</span>;
-}
-
 export default function ConsoleLogClient() {
   const [logs, setLogs] = useState([]);
   const [connected, setConnected] = useState(false);
