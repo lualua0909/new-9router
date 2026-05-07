@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Badge, Input, ModelSelectModal } from "@/shared/components";
+import { Card, Button, Badge, Input, ModelSelectModal , Icon } from "@/shared/components";
 import { TOOL_HOSTS } from "@/shared/constants/mitmToolHosts";
 import Image from "next/image";
 
@@ -159,9 +159,7 @@ export default function MitmToolCard({
               <p className="text-xs text-text-muted sm:truncate">Intercept {tool.name} requests via MITM proxy</p>
             </div>
           </div>
-          <span className={`material-symbols-outlined text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>
-            expand_more
-          </span>
+          <Icon name="expand_more" className={`text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`} />
         </div>
 
         {isExpanded && (
@@ -195,7 +193,7 @@ export default function MitmToolCard({
                 {tool.defaultModels.map((model) => (
                   <div key={model.alias} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[9rem_auto_1fr_auto] sm:items-center sm:gap-2">
                     <span className="text-xs font-semibold text-text-main sm:text-right">{model.name}</span>
-                    <span className="material-symbols-outlined hidden text-text-muted text-[14px] sm:inline">arrow_forward</span>
+                    <Icon name="arrow_forward" className="hidden text-text-muted text-[14px] sm:inline" />
                     <div className="relative w-full min-w-0">
                       <input
                         type="text"
@@ -215,7 +213,7 @@ export default function MitmToolCard({
                           className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-text-muted hover:text-red-500 rounded transition-colors"
                           title="Clear"
                         >
-                          <span className="material-symbols-outlined text-[14px]">close</span>
+                          <Icon name="close" className="text-[14px]" />
                         </button>
                       )}
                     </div>
@@ -243,7 +241,7 @@ export default function MitmToolCard({
                   disabled={!serverRunning || loading}
                   className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:py-1.5"
                 >
-                  <span className="material-symbols-outlined text-[16px]">stop_circle</span>
+                  <Icon name="stop_circle" className="text-[16px]" />
                   Stop DNS
                 </button>
               ) : (
@@ -252,7 +250,7 @@ export default function MitmToolCard({
                   disabled={!serverRunning || loading}
                   className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:py-1.5"
                 >
-                  <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                  <Icon name="play_circle" className="text-[16px]" />
                   Start DNS
                 </button>
               )}
@@ -260,7 +258,7 @@ export default function MitmToolCard({
               {/* Warning below button */}
               {warning && (
                 <div className="flex items-center gap-2 px-2 py-1.5 rounded text-xs text-amber-500">
-                  <span className="material-symbols-outlined text-[14px]">warning</span>
+                  <Icon name="warning" className="text-[14px]" />
                   <span>{warning}</span>
                 </div>
               )}
@@ -275,7 +273,7 @@ export default function MitmToolCard({
           <div className="mx-4 flex w-full max-w-sm flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-xl sm:p-6">
             <h3 className="font-semibold text-text-main">Sudo Password Required</h3>
             <div className="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <span className="material-symbols-outlined text-yellow-500 text-[20px]">warning</span>
+              <Icon name="warning" className="text-yellow-500 text-[20px]" />
               <p className="text-xs text-text-muted">Required to modify /etc/hosts and flush DNS cache</p>
             </div>
             <Input
@@ -287,7 +285,7 @@ export default function MitmToolCard({
             />
             {modalError && (
               <div className="flex items-center gap-2 px-2 py-1.5 rounded text-xs bg-red-500/10 text-red-600">
-                <span className="material-symbols-outlined text-[14px]">error</span>
+                <Icon name="error" className="text-[14px]" />
                 <span>{modalError}</span>
               </div>
             )}

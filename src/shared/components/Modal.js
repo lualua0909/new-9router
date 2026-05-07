@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { cn } from "@/shared/utils/cn";
 import Button from "./Button";
+import Icon from "@/shared/components/Icon";
 
 export default function Modal({
   isOpen,
@@ -82,7 +83,7 @@ export default function Modal({
                 onClick={onClose}
                 className="p-1.5 rounded-[10px] text-text-muted hover:bg-surface-2 hover:text-text-main transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <Icon name="close" className="text-[20px]" />
               </button>
             )}
           </div>

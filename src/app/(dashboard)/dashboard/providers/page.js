@@ -11,6 +11,7 @@ import {
   Modal,
   Select,
   Toggle,
+  Icon,
 } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
@@ -285,9 +286,7 @@ export default function ProvidersPage() {
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
       {!hasAnyResult && (
         <div className="text-center py-8 border border-dashed border-border rounded-xl">
-          <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
-            search_off
-          </span>
+          <Icon name="search_off" className="text-[32px] text-text-muted mb-2" />
           <p className="text-text-muted text-sm">No providers match your search</p>
         </div>
       )}
@@ -312,11 +311,7 @@ export default function ProvidersPage() {
               title="Test all OAuth connections"
               aria-label="Test all OAuth connections"
             >
-              <span
-                className={`material-symbols-outlined text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`}
-              >
-                play_arrow
-              </span>
+              <Icon name="play_arrow" className={`text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`} />
               {testingMode === "oauth" ? "Testing..." : "Test All"}
             </button>
           </div>
@@ -354,11 +349,7 @@ export default function ProvidersPage() {
             title="Test all Free connections"
             aria-label="Test all Free provider connections"
           >
-            <span
-              className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
-            >
-              play_arrow
-            </span>
+            <Icon name="play_arrow" className={`text-[14px]${testingMode === "free" ? " animate-spin" : ""}`} />
             {testingMode === "free" ? "Testing..." : "Test All"}
           </button>
         </div>
@@ -405,11 +396,7 @@ export default function ProvidersPage() {
             title="Test all API Key connections"
             aria-label="Test all API Key connections"
           >
-            <span
-              className={`material-symbols-outlined text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`}
-            >
-              play_arrow
-            </span>
+            <Icon name="play_arrow" className={`text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`} />
             {testingMode === "apikey" ? "Testing..." : "Test All"}
           </button>
         </div>
@@ -466,9 +453,7 @@ export default function ProvidersPage() {
                   }`}
                 title="Test all Compatible connections"
               >
-                <span className={`material-symbols-outlined text-[14px]${testingMode === "compatible" ? " animate-spin" : ""}`}>
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" className={`text-[14px]${testingMode === "compatible" ? " animate-spin" : ""}`} />
                 {testingMode === "compatible" ? "Testing..." : "Test All"}
               </button>
             )} */}
@@ -494,9 +479,7 @@ export default function ProvidersPage() {
         {compatibleProviders.length === 0 &&
         anthropicCompatibleProviders.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-border rounded-xl">
-            <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
-              extension
-            </span>
+            <Icon name="extension" className="text-[32px] text-text-muted mb-2" />
             <p className="text-text-muted text-sm">
               No compatible providers added yet
             </p>
@@ -560,7 +543,7 @@ export default function ProvidersPage() {
                 className="p-1 rounded-lg hover:bg-bg text-text-muted hover:text-text-main transition-colors"
                 aria-label="Close test results"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <Icon name="close" className="text-lg" />
               </button>
             </div>
             <div className="p-5">
@@ -621,9 +604,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px]">
-                        pause_circle
-                      </span>
+                      <Icon name="pause_circle" className="text-[12px]" />
                       Disabled
                     </span>
                   </Badge>
@@ -749,9 +730,7 @@ function ApiKeyProviderCard({
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px]">
-                        pause_circle
-                      </span>
+                      <Icon name="pause_circle" className="text-[12px]" />
                       Disabled
                     </span>
                   </Badge>
@@ -1203,9 +1182,7 @@ function ProviderTestResultsView({ results }) {
   if (results.error && !results.results) {
     return (
       <div className="text-center py-6">
-        <span className="material-symbols-outlined text-red-500 text-[32px] mb-2 block">
-          error
-        </span>
+        <Icon name="error" className="text-red-500 text-[32px] mb-2 block" />
         <p className="text-sm text-red-400">{results.error}</p>
       </div>
     );
@@ -1245,11 +1222,7 @@ function ProviderTestResultsView({ results }) {
           key={r.connectionId || i}
           className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg bg-black/[0.03] px-3 py-2 text-xs dark:bg-white/[0.03] sm:flex-nowrap"
         >
-          <span
-            className={`material-symbols-outlined text-[16px] ${r.valid ? "text-emerald-500" : "text-red-500"}`}
-          >
-            {r.valid ? "check_circle" : "error"}
-          </span>
+          <Icon name={r.valid ? "check_circle" : "error"} className={`text-[16px] ${r.valid ? "text-emerald-500" : "text-red-500"}`} />
           <div className="min-w-0 flex-[1_1_160px]">
             <span className="block truncate font-medium sm:inline">
               {r.connectionName}

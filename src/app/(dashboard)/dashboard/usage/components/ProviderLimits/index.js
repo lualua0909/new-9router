@@ -6,7 +6,7 @@ import QuotaTable from "./QuotaTable";
 import Toggle from "@/shared/components/Toggle";
 import { parseQuotaData, calculatePercentage } from "./utils";
 import Card from "@/shared/components/Card";
-import { EditConnectionModal } from "@/shared/components";
+import { EditConnectionModal , Icon } from "@/shared/components";
 import { USAGE_SUPPORTED_PROVIDERS, USAGE_APIKEY_PROVIDERS } from "@/shared/constants/providers";
 
 // Connection is eligible for the quota page when it uses OAuth or is an apikey provider whitelisted for quota
@@ -453,9 +453,7 @@ export default function ProviderLimits() {
     return (
       <Card padding="lg">
         <div className="text-center py-12">
-          <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
-            cloud_off
-          </span>
+          <Icon name="cloud_off" className="text-[64px] text-text-muted opacity-20" />
           <h3 className="mt-4 text-lg font-semibold text-text-primary">
             No Providers Connected
           </h3>
@@ -490,7 +488,7 @@ export default function ProviderLimits() {
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 {providerFilter === "all" ? (
-                  <span className="material-symbols-outlined text-[14px] text-text-muted">apps</span>
+                  <Icon name="apps" className="text-[14px] text-text-muted" />
                 ) : (
                   <ProviderIcon
                     src={`/providers/${providerFilter}.png`}
@@ -502,7 +500,7 @@ export default function ProviderLimits() {
                 )}
                 <span className="truncate capitalize hidden lg:inline">{selectedProviderLabel}</span>
               </span>
-              <span className="material-symbols-outlined text-[14px] text-text-muted">expand_more</span>
+              <Icon name="expand_more" className="text-[14px] text-text-muted" />
             </button>
 
             {providerMenuOpen && (
@@ -519,9 +517,9 @@ export default function ProviderLimits() {
                     onClick={() => { setProviderFilter("all"); setProviderMenuOpen(false); }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${providerFilter === "all" ? "bg-primary/10 text-primary" : "text-text-primary hover:bg-black/5 dark:hover:bg-white/10"}`}
                   >
-                    <span className="material-symbols-outlined text-[22px]">apps</span>
+                    <Icon name="apps" className="text-[22px]" />
                     <span className="font-medium">All providers</span>
-                    {providerFilter === "all" && <span className="material-symbols-outlined ml-auto text-[20px]">check</span>}
+                    {providerFilter === "all" && <Icon name="check" className="ml-auto text-[20px]" />}
                   </button>
                   <div className="my-1 h-px bg-black/10 dark:bg-white/10" />
                   <div className="max-h-72 overflow-y-auto pr-1">
@@ -540,7 +538,7 @@ export default function ProviderLimits() {
                           fallbackText={provider.slice(0, 2).toUpperCase()}
                         />
                         <span className="font-medium capitalize">{provider}</span>
-                        {providerFilter === provider && <span className="material-symbols-outlined ml-auto text-[20px]">check</span>}
+                        {providerFilter === provider && <Icon name="check" className="ml-auto text-[20px]" />}
                       </button>
                     ))}
                   </div>
@@ -554,7 +552,7 @@ export default function ProviderLimits() {
             className={`flex h-8 shrink-0 items-center gap-1 rounded-lg border px-2 text-xs transition-colors ${expiringFirst ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-black/10 text-text-primary hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"}`}
             title="Sort accounts by earliest quota reset time"
           >
-            <span className="material-symbols-outlined text-[14px]">hourglass_top</span>
+            <Icon name="hourglass_top" className="text-[14px]" />
             <span className="hidden sm:inline">Expiring first</span>
           </button>
 
@@ -566,7 +564,7 @@ export default function ProviderLimits() {
             className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-red-500/30 px-2 text-xs text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
             title="Disable connections with depleted quota (within current filter)"
           >
-            <span className="material-symbols-outlined text-[14px]">block</span>
+            <Icon name="block" className="text-[14px]" />
             <span className="hidden sm:inline">Turn off Empty</span>
           </button>
 
@@ -578,7 +576,7 @@ export default function ProviderLimits() {
             className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-emerald-500/30 px-2 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/10 disabled:opacity-50"
             title="Enable connections that still have quota (within current filter)"
           >
-            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+            <Icon name="check_circle" className="text-[14px]" />
             <span className="hidden sm:inline">Turn on Available</span>
           </button>
 
@@ -588,13 +586,7 @@ export default function ProviderLimits() {
             className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"
             title={autoRefresh ? "Disable auto-refresh" : "Enable auto-refresh"}
           >
-            <span
-              className={`material-symbols-outlined text-[14px] ${
-                autoRefresh ? "text-primary" : "text-text-muted"
-              }`}
-            >
-              {autoRefresh ? "toggle_on" : "toggle_off"}
-            </span>
+            <Icon name={autoRefresh ? "toggle_on" : "toggle_off"} className={`text-[14px] ${ autoRefresh ? "text-primary" : "text-text-muted" }`} />
             <span className="hidden text-text-primary sm:inline">Auto-refresh</span>
             {autoRefresh && (
               <span className="text-[10px] text-text-muted tabular-nums">({countdown}s)</span>
@@ -609,7 +601,7 @@ export default function ProviderLimits() {
             className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs text-text-primary transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
             title="Refresh all"
           >
-            <span className={`material-symbols-outlined text-[14px] ${refreshingAll ? "animate-spin" : ""}`}>refresh</span>
+            <Icon name="refresh" className={`text-[14px] ${refreshingAll ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
@@ -667,11 +659,7 @@ export default function ProviderLimits() {
                       className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                       title="Refresh quota"
                     >
-                      <span
-                        className={`material-symbols-outlined text-[18px] text-text-muted ${isLoading ? "animate-spin" : ""}`}
-                      >
-                        refresh
-                      </span>
+                      <Icon name="refresh" className={`text-[18px] text-text-muted ${isLoading ? "animate-spin" : ""}`} />
                     </button>
                     <button
                       type="button"
@@ -683,9 +671,7 @@ export default function ProviderLimits() {
                       className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors disabled:opacity-50"
                       title="Edit connection"
                     >
-                      <span className="material-symbols-outlined text-[18px]">
-                        edit
-                      </span>
+                      <Icon name="edit" className="text-[18px]" />
                     </button>
                     <button
                       type="button"
@@ -694,11 +680,7 @@ export default function ProviderLimits() {
                       className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
                       title="Delete connection"
                     >
-                      <span
-                        className={`material-symbols-outlined text-[18px] ${deletingId === conn.id ? "animate-pulse" : ""}`}
-                      >
-                        delete
-                      </span>
+                      <Icon name="delete" className={`text-[18px] ${deletingId === conn.id ? "animate-pulse" : ""}`} />
                     </button>
                     <div
                       className="inline-flex items-center pl-0.5"
@@ -724,15 +706,11 @@ export default function ProviderLimits() {
               <div className="px-2 py-1.5">
                 {isLoading ? (
                   <div className="text-center py-5 text-text-muted">
-                    <span className="material-symbols-outlined text-[28px] animate-spin">
-                      progress_activity
-                    </span>
+                    <Icon name="progress_activity" className="text-[28px] animate-spin" />
                   </div>
                 ) : error ? (
                   <div className="text-center py-5">
-                    <span className="material-symbols-outlined text-[28px] text-red-500">
-                      error
-                    </span>
+                    <Icon name="error" className="text-[28px] text-red-500" />
                     <p className="mt-1.5 text-xs text-text-muted">{error}</p>
                   </div>
                 ) : quota?.message ? (

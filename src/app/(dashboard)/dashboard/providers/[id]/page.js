@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, IFlowCookieModal, GitLabAuthModal, Toggle, Select, EditConnectionModal, NoAuthProxyCard } from "@/shared/components";
+import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, IFlowCookieModal, GitLabAuthModal, Toggle, Select, EditConnectionModal, NoAuthProxyCard , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS, THINKING_CONFIG } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -41,6 +41,10 @@ function ExampleCard({ models }) {
   const [selectedModel, setSelectedModel] = useState("");
   const [prompt, setPrompt] = useState("Reply with a short hello from this model.");
   const [maxTokens, setMaxTokens] = useState("128");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [useTunnel, setUseTunnel] = useState(false);
   const [localEndpoint, setLocalEndpoint] = useState("");
@@ -79,15 +83,19 @@ function ExampleCard({ models }) {
 
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   const normalizedMaxTokens = Number(maxTokens);
-  const requestBody = {
+  const requestBody = applyExampleFeatures({
     model: selectedModel || "provider/model-id",
-    stream: false,
     max_tokens: Number.isFinite(normalizedMaxTokens) && normalizedMaxTokens > 0 ? normalizedMaxTokens : 128,
     messages: [{ role: "user", content: prompt.trim() || "Hello" }],
-  };
+  }, {
+    stream: streamMode,
+    thinking: thinkingMode,
+    webFetch: webFetchMode,
+    webSearch: webSearchMode,
+  });
   const curlSnippet = `curl -X POST ${endpoint || "http://localhost:20128"}/v1/chat/completions \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -d '${JSON.stringify(requestBody)}'`;
   const resultJson = result ? JSON.stringify(result.data, null, 2) : "";
 
@@ -100,6 +108,7 @@ function ExampleCard({ models }) {
     try {
       const headers = { "Content-Type": "application/json" };
       if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      if (streamMode) headers.Accept = "text/event-stream";
       const res = await fetch("/api/v1/chat/completions", {
         method: "POST",
         headers,
@@ -165,7 +174,7 @@ function ExampleCard({ models }) {
                   useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
                 }`}
               >
-                <span className="material-symbols-outlined text-[14px]">wifi_tethering</span>
+                <Icon name="wifi_tethering" className="text-[14px]" />
                 Tunnel
               </button>
             )}
@@ -193,6 +202,19 @@ function ExampleCard({ models }) {
           />
         </Row>
 
+        <Row label="Options">
+          <ExampleFeatureToggles
+            stream={streamMode}
+            onStreamChange={setStreamMode}
+            thinking={thinkingMode}
+            onThinkingChange={setThinkingMode}
+            webFetch={webFetchMode}
+            onWebFetchChange={setWebFetchMode}
+            webSearch={webSearchMode}
+            onWebSearchChange={setWebSearchMode}
+          />
+        </Row>
+
         <Row label="Prompt">
           <textarea
             value={prompt}
@@ -211,7 +233,7 @@ function ExampleCard({ models }) {
                 onClick={() => copyCurl(curlSnippet)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedCurl ? "check" : "content_copy"}</span>
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedCurl ? "Copied" : "Copy"}
               </button>
               <button
@@ -220,9 +242,7 @@ function ExampleCard({ models }) {
                 disabled={running || !selectedModel || !prompt.trim()}
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
-                <span className="material-symbols-outlined text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
                 {running ? "Running..." : "Run"}
               </button>
             </div>
@@ -243,7 +263,7 @@ function ExampleCard({ models }) {
                 onClick={() => copyRes(resultJson)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedRes ? "check" : "content_copy"}</span>
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedRes ? "Copied" : "Copy"}
               </button>
             )}
@@ -996,7 +1016,7 @@ export default function ProviderDetailPage() {
           onClick={() => setShowAddCustomModel(true)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 px-3 py-2 text-xs text-primary transition-colors hover:border-primary hover:bg-primary/5 sm:w-auto"
         >
-          <span className="material-symbols-outlined text-sm">add</span>
+          <Icon name="add" className="text-sm" />
           Add Model
         </button>
 
@@ -1022,7 +1042,7 @@ export default function ProviderDetailPage() {
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
                     title={`${m.name} · ${(m.contextLength / 1000).toFixed(0)}k ctx`}
                   >
-                    <span className="material-symbols-outlined text-[13px]">add</span>
+                    <Icon name="add" className="text-[13px]" />
                     {m.id.split("/").pop()}
                   </button>
                 ))}
@@ -1066,7 +1086,7 @@ export default function ProviderDetailPage() {
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
                       title={m.name}
                     >
-                      <span className="material-symbols-outlined text-[13px]">add</span>
+                      <Icon name="add" className="text-[13px]" />
                       {m.id}
                     </button>
                   ))}
@@ -1091,7 +1111,7 @@ export default function ProviderDetailPage() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
                   title="Restore model"
                 >
-                  <span className="material-symbols-outlined text-[13px]">add</span>
+                  <Icon name="add" className="text-[13px]" />
                   {m.id}
                 </button>
               ))}
@@ -1180,7 +1200,7 @@ export default function ProviderDetailPage() {
           href="/dashboard/providers"
           className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <Icon name="arrow_back" className="text-lg" />
           Back to Providers
         </Link>
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
@@ -1214,7 +1234,7 @@ export default function ProviderDetailPage() {
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  <Icon name="open_in_new" className="text-sm" />
                   {providerInfo.notice?.apiKeyUrl ? "Get API Key" : "Sign up / Learn more"}
                 </a>
               )}
@@ -1228,14 +1248,14 @@ export default function ProviderDetailPage() {
 
       {providerInfo.deprecated && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-          <span className="material-symbols-outlined text-[16px] text-yellow-500 mt-0.5 shrink-0">warning</span>
+          <Icon name="warning" className="text-[16px] text-yellow-500 mt-0.5 shrink-0" />
           <p className="text-xs text-red-600 dark:text-yellow-400 leading-relaxed">{providerInfo.deprecationNotice}</p>
         </div>
       )}
 
       {providerInfo.notice?.text && !providerInfo.deprecated && (
         <div className="flex flex-col gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 sm:flex-row sm:items-center">
-          <span className="material-symbols-outlined text-[16px] text-blue-500 shrink-0">info</span>
+          <Icon name="info" className="text-[16px] text-blue-500 shrink-0" />
           <p className="min-w-0 flex-1 text-xs leading-relaxed text-blue-600 dark:text-blue-400">{providerInfo.notice.text}</p>
           {providerInfo.notice.apiKeyUrl && (
             <a
@@ -1359,7 +1379,7 @@ export default function ProviderDetailPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary shrink-0">
-                  <span className="material-symbols-outlined text-[18px]">{isOAuth ? "lock" : "key"}</span>
+                  <Icon name={isOAuth ? "lock" : "key"} className="text-[18px]" />
                 </div>
                 <p className="text-sm text-text-muted">No connections yet</p>
               </div>

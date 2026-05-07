@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { marked } from "marked";
 import { GITHUB_CONFIG } from "@/shared/constants/config";
+import Icon from "@/shared/components/Icon";
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -63,7 +64,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
             className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             aria-label="Close"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <Icon name="close" className="text-[20px]" />
           </button>
         </div>
 
@@ -71,7 +72,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
         <div className="p-6 overflow-y-auto flex-1">
           {loading && (
             <div className="flex items-center justify-center py-10 text-text-muted">
-              <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+              <Icon name="progress_activity" className="animate-spin mr-2" />
               Loading...
             </div>
           )}

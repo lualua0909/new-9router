@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, Button, Input, Select, Toggle } from "@/shared/components";
+import { Card, Button, Input, Select, Toggle , Icon } from "@/shared/components";
 import { AI_PROVIDERS, AUTH_METHODS } from "@/shared/constants/config";
 
 const providerOptions = Object.values(AI_PROVIDERS).map((p) => ({
@@ -80,7 +80,7 @@ export default function NewProviderPage() {
           href="/dashboard/providers"
           className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <Icon name="arrow_back" className="text-lg" />
           Back to Providers
         </Link>
         <h1 className="text-3xl font-semibold tracking-tight">Add New Provider</h1>
@@ -109,12 +109,7 @@ export default function NewProviderPage() {
               <div
                 className="size-10 rounded-lg flex items-center justify-center bg-bg border border-border"
               >
-                <span
-                  className="material-symbols-outlined text-xl"
-                  style={{ color: selectedProvider.color }}
-                >
-                  {selectedProvider.icon}
-                </span>
+                <Icon name={selectedProvider.icon} className="text-xl" style={{ color: selectedProvider.color }} />
               </div>
               <div>
                 <p className="font-medium">{selectedProvider.name}</p>
@@ -142,9 +137,7 @@ export default function NewProviderPage() {
                       : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <span className="material-symbols-outlined">
-                    {method.value === "api_key" ? "key" : "lock"}
-                  </span>
+                  <Icon name={method.value === "api_key" ? "key" : "lock"} />
                   <span className="font-medium">{method.label}</span>
                 </button>
               ))}

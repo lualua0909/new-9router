@@ -7,6 +7,8 @@ export { default as Modal, ConfirmModal } from "./Modal";
 export { default as Loading, Spinner, PageLoading, Skeleton, CardSkeleton } from "./Loading";
 export { default as Avatar } from "./Avatar";
 export { default as Badge } from "./Badge";
+export { default as Icon } from "./Icon";
+export { default as ExampleFeatureToggles, applyExampleFeatures } from "./ExampleFeatureToggles";
 export { default as Toggle } from "./Toggle";
 export { default as ThemeToggle } from "./ThemeToggle";
 export { ThemeProvider } from "./ThemeProvider";
@@ -37,5 +39,3 @@ export { default as ProviderInfoCard } from "./ProviderInfoCard";
 
 // Layouts
 export * from "./layouts";
-
-

@@ -1,12 +1,276 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle } from "@/shared/components";
+import { useState, useEffect, useMemo } from "react";
+import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
+
+function Row({ label, children }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+      <span className="w-full text-xs font-medium text-text-muted sm:w-20 sm:shrink-0">{label}</span>
+      <div className="w-full min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+const DEFAULT_CHAT_RESPONSE_EXAMPLE = `{
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "choices": [{
+    "index": 0,
+    "message": { "role": "assistant", "content": "..." },
+    "finish_reason": "stop"
+  }],
+  "usage": { "prompt_tokens": 9, "completion_tokens": 12, "total_tokens": 21 }
+}`;
+
+function ExampleCard({ combos }) {
+  const availableCombos = useMemo(
+    () => combos.filter((combo) => (combo.models || []).length > 0),
+    [combos]
+  );
+  const [selectedCombo, setSelectedCombo] = useState("");
+  const [prompt, setPrompt] = useState("Reply with a short hello from this combo.");
+  const [maxTokens, setMaxTokens] = useState("128");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [useTunnel, setUseTunnel] = useState(false);
+  const [localEndpoint, setLocalEndpoint] = useState("");
+  const [tunnelEndpoint, setTunnelEndpoint] = useState("");
+  const [result, setResult] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
+  const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
+
+  useEffect(() => {
+    setLocalEndpoint(window.location.origin);
+    fetch("/api/keys")
+      .then((res) => res.json())
+      .then((data) => {
+        setApiKey((data.keys || []).find((key) => key.isActive !== false)?.key || "");
+      })
+      .catch(() => {});
+    fetch("/api/tunnel/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.publicUrl) setTunnelEndpoint(data.publicUrl);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (availableCombos.length === 0) {
+      setSelectedCombo("");
+      return;
+    }
+    if (!availableCombos.some((combo) => combo.name === selectedCombo)) {
+      setSelectedCombo(availableCombos[0].name);
+    }
+  }, [availableCombos, selectedCombo]);
+
+  const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
+  const normalizedMaxTokens = Number(maxTokens);
+  const requestBody = applyExampleFeatures({
+    model: selectedCombo || "combo-name",
+    max_tokens: Number.isFinite(normalizedMaxTokens) && normalizedMaxTokens > 0 ? normalizedMaxTokens : 128,
+    messages: [{ role: "user", content: prompt.trim() || "Hello" }],
+  }, {
+    stream: streamMode,
+    thinking: thinkingMode,
+    webFetch: webFetchMode,
+    webSearch: webSearchMode,
+  });
+  const curlSnippet = `curl -X POST ${endpoint || "http://localhost:20128"}/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
+  -d '${JSON.stringify(requestBody)}'`;
+  const resultJson = result ? JSON.stringify(result.data, null, 2) : "";
+
+  const handleRun = async () => {
+    if (!selectedCombo || !prompt.trim()) return;
+    setRunning(true);
+    setError("");
+    setResult(null);
+    const start = Date.now();
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      if (streamMode) headers.Accept = "text/event-stream";
+      const res = await fetch("/api/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+      const latencyMs = Date.now() - start;
+      const text = await res.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = { raw: text };
+      }
+      if (!res.ok) {
+        const detail = data?.error?.message || data?.error || data?.message || text || `HTTP ${res.status}`;
+        setError(String(detail));
+        return;
+      }
+      setResult({ data, latencyMs });
+    } catch (err) {
+      setError(err.message || "Network error");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Card>
+      <h2 className="mb-4 text-lg font-semibold">Example</h2>
+      <div className="flex flex-col gap-2.5">
+        <Row label="Combo">
+          <select
+            value={selectedCombo}
+            onChange={(e) => setSelectedCombo(e.target.value)}
+            disabled={availableCombos.length === 0}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm focus:border-primary focus:outline-none disabled:opacity-60"
+          >
+            {availableCombos.length === 0 ? (
+              <option value="">No combos with models available</option>
+            ) : (
+              availableCombos.map((combo) => (
+                <option key={combo.id} value={combo.name}>
+                  {combo.name} ({combo.models.length} models)
+                </option>
+              ))
+            )}
+          </select>
+        </Row>
+
+        <Row label="Endpoint">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              value={endpoint}
+              onChange={(e) => useTunnel ? setTunnelEndpoint(e.target.value) : setLocalEndpoint(e.target.value)}
+              className="w-full min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-mono text-sm focus:border-primary focus:outline-none"
+              placeholder="http://localhost:20128"
+            />
+            {tunnelEndpoint && (
+              <button
+                type="button"
+                onClick={() => setUseTunnel((prev) => !prev)}
+                className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition-colors ${
+                  useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
+                }`}
+              >
+                <Icon name="wifi_tethering" className="text-[14px]" />
+                Tunnel
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <Row label="API Key">
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 font-mono text-sm focus:border-primary focus:outline-none"
+          />
+        </Row>
+
+        <Row label="Max tokens">
+          <input
+            type="number"
+            min="1"
+            max="4096"
+            value={maxTokens}
+            onChange={(e) => setMaxTokens(e.target.value)}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+          />
+        </Row>
+
+        <Row label="Options">
+          <ExampleFeatureToggles
+            stream={streamMode}
+            onStreamChange={setStreamMode}
+            thinking={thinkingMode}
+            onThinkingChange={setThinkingMode}
+            webFetch={webFetchMode}
+            onWebFetchChange={setWebFetchMode}
+            webSearch={webSearchMode}
+            onWebSearchChange={setWebSearchMode}
+          />
+        </Row>
+
+        <Row label="Prompt">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={3}
+            className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          />
+        </Row>
+
+        <div className="mt-1">
+          <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Request</span>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => copyCurl(curlSnippet)}
+                className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
+              >
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
+                {copiedCurl ? "Copied" : "Copy"}
+              </button>
+              <button
+                type="button"
+                onClick={handleRun}
+                disabled={running || !selectedCombo || !prompt.trim()}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
+                {running ? "Running..." : "Run"}
+              </button>
+            </div>
+          </div>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-sidebar px-3 py-2.5 font-mono text-xs text-text-main">{curlSnippet}</pre>
+        </div>
+
+        {error && <p className="break-words text-xs text-red-500">{error}</p>}
+
+        <div>
+          <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Response {result && <span className="font-normal normal-case">&#9889; {result.latencyMs}ms</span>}
+            </span>
+            {result && (
+              <button
+                type="button"
+                onClick={() => copyRes(resultJson)}
+                className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
+              >
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
+                {copiedRes ? "Copied" : "Copy"}
+              </button>
+            )}
+          </div>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-sidebar px-3 py-2.5 font-mono text-xs text-text-main opacity-70">
+            {result ? resultJson : DEFAULT_CHAT_RESPONSE_EXAMPLE}
+          </pre>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export default function CombosPage() {
   const [combos, setCombos] = useState([]);
@@ -140,12 +404,14 @@ export default function CombosPage() {
         </Button>
       </div>
 
+      <ExampleCard combos={combos} />
+
       {/* Combos List */}
       {combos.length === 0 ? (
         <Card>
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-              <span className="material-symbols-outlined text-[32px]">layers</span>
+              <Icon name="layers" className="text-[32px]" />
             </div>
             <p className="text-text-main font-medium mb-1">No combos yet</p>
             <p className="text-sm text-text-muted mb-4">Create model combos with fallback support</p>
@@ -199,7 +465,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
           <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-primary text-[18px]">layers</span>
+            <Icon name="layers" className="text-primary text-[18px]" />
           </div>
           <div className="min-w-0 flex-1">
             <code className="block truncate font-mono text-sm font-medium">{combo.name}</code>
@@ -238,9 +504,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
               className="flex flex-col items-center rounded px-2 py-1 text-text-muted transition-colors hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
               title="Copy combo name"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {copied === `combo-${combo.id}` ? "check" : "content_copy"}
-              </span>
+              <Icon name={copied === `combo-${combo.id}` ? "check" : "content_copy"} className="text-[18px]" />
               <span className="text-[10px] leading-tight">Copy</span>
             </button>
             <button
@@ -248,7 +512,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
               className="flex flex-col items-center rounded px-2 py-1 text-text-muted transition-colors hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
               title="Edit"
             >
-              <span className="material-symbols-outlined text-[18px]">edit</span>
+              <Icon name="edit" className="text-[18px]" />
               <span className="text-[10px] leading-tight">Edit</span>
             </button>
             <button
@@ -256,7 +520,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
               className="flex flex-col items-center rounded px-2 py-1 text-red-500 transition-colors hover:bg-red-500/10"
               title="Delete"
             >
-              <span className="material-symbols-outlined text-[18px]">delete</span>
+              <Icon name="delete" className="text-[18px]" />
               <span className="text-[10px] leading-tight">Delete</span>
             </button>
           </div>
@@ -316,7 +580,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
           className={`p-0.5 rounded ${isFirst ? "text-text-muted/20 cursor-not-allowed" : "text-text-muted hover:text-primary hover:bg-black/5 dark:hover:bg-white/5"}`}
           title="Move up"
         >
-          <span className="material-symbols-outlined text-[12px]">arrow_upward</span>
+          <Icon name="arrow_upward" className="text-[12px]" />
         </button>
         <button
           onClick={onMoveDown}
@@ -324,7 +588,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
           className={`p-0.5 rounded ${isLast ? "text-text-muted/20 cursor-not-allowed" : "text-text-muted hover:text-primary hover:bg-black/5 dark:hover:bg-white/5"}`}
           title="Move down"
         >
-          <span className="material-symbols-outlined text-[12px]">arrow_downward</span>
+          <Icon name="arrow_downward" className="text-[12px]" />
         </button>
       </div>
 
@@ -334,7 +598,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
         className="p-0.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500 transition-all"
         title="Remove"
       >
-        <span className="material-symbols-outlined text-[12px]">close</span>
+        <Icon name="close" className="text-[12px]" />
       </button>
     </div>
   );
@@ -445,7 +709,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
 
             {models.length === 0 ? (
               <div className="text-center py-4 border border-dashed border-black/10 dark:border-white/10 rounded-lg bg-black/[0.01] dark:bg-white/[0.01]">
-                <span className="material-symbols-outlined text-text-muted text-xl mb-1">layers</span>
+                <Icon name="layers" className="text-text-muted text-xl mb-1" />
                 <p className="text-xs text-text-muted">No models added yet</p>
               </div>
             ) : (
@@ -475,7 +739,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
               onClick={() => setShowModelSelect(true)}
               className="w-full mt-2 py-2 border border-dashed border-black/10 dark:border-white/10 rounded-lg text-xs text-primary font-medium hover:text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-1"
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
+              <Icon name="add" className="text-[16px]" />
               Add Model
             </button>
           </div>

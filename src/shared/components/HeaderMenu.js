@@ -7,6 +7,7 @@ import { useTheme } from "@/shared/hooks/useTheme";
 import ChangelogModal from "./ChangelogModal";
 import NineRemotePromoModal from "./NineRemotePromoModal";
 import LanguageSwitcher from "./LanguageSwitcher";
+import Icon from "@/shared/components/Icon";
 
 const LOCALE_INFO = {
   "en": { name: "English", flag: "🇺🇸" },
@@ -63,9 +64,7 @@ function MenuItem({ icon, label, onClick, trailing, danger }) {
           : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"
       }`}
     >
-      <span className={`material-symbols-outlined text-[20px] ${danger ? "" : "text-text-muted"}`}>
-        {icon}
-      </span>
+      <Icon name={icon} className={`text-[20px] ${danger ? "" : "text-text-muted"}`} />
       <span className="flex-1 text-left">{label}</span>
       {trailing && <span className="text-base">{trailing}</span>}
     </button>
@@ -115,7 +114,7 @@ export default function HeaderMenu({ onLogout }) {
           className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
           title="Menu"
         >
-          <span className="material-symbols-outlined">grid_view</span>
+          <Icon name="grid_view" />
         </button>
 
         {isOpen && (

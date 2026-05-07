@@ -3,7 +3,7 @@
 import { useParams, notFound, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Button, Input, Toggle, ModelSelectModal } from "@/shared/components";
+import { Card, Button, Input, Toggle, ModelSelectModal , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { AI_PROVIDERS, MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
 
@@ -58,6 +58,10 @@ export default function ComboDetailPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState("");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [connections, setConnections] = useState([]);
   const [modelAliases, setModelAliases] = useState({});
@@ -170,9 +174,15 @@ export default function ComboDetailPage() {
     const start = Date.now();
     try {
       const path = EXAMPLE_PATHS[combo.kind];
-      const body = EXAMPLE_BODIES[combo.kind](combo.name);
+      const body = applyExampleFeatures(EXAMPLE_BODIES[combo.kind](combo.name), {
+        stream: streamMode,
+        thinking: thinkingMode,
+        webFetch: webFetchMode,
+        webSearch: webSearchMode,
+      });
       const headers = { "Content-Type": "application/json" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (streamMode) headers["Accept"] = "text/event-stream";
       const res = await fetch(`/api${path}`, { method: "POST", headers, body: JSON.stringify(body) });
       const latencyMs = Date.now() - start;
       if (!res.ok) {
@@ -225,9 +235,16 @@ export default function ComboDetailPage() {
 
   const kindLabel = KIND_LABELS[combo.kind] || MEDIA_PROVIDER_KINDS.find((k) => k.id === combo.kind)?.label || "Combo";
   const examplePath = EXAMPLE_PATHS[combo.kind];
-  const exampleBody = combo.kind && EXAMPLE_BODIES[combo.kind] ? EXAMPLE_BODIES[combo.kind](combo.name) : null;
+  const exampleBody = combo.kind && EXAMPLE_BODIES[combo.kind]
+    ? applyExampleFeatures(EXAMPLE_BODIES[combo.kind](combo.name), {
+      stream: streamMode,
+      thinking: thinkingMode,
+      webFetch: webFetchMode,
+      webSearch: webSearchMode,
+    })
+    : null;
   const curlExample = examplePath
-    ? `curl -X POST http://localhost:20128${examplePath} \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\\n  -d '${JSON.stringify(exampleBody)}'`
+    ? `curl -X POST http://localhost:20128${examplePath} \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\\n  -d '${JSON.stringify(exampleBody)}'`
     : "";
   const backHref = getListingHref(combo.kind);
 
@@ -237,10 +254,10 @@ export default function ComboDetailPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <Link href={backHref} className="text-text-muted hover:text-primary">
-            <span className="material-symbols-outlined">arrow_back</span>
+            <Icon name="arrow_back" />
           </Link>
           <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary">layers</span>
+            <Icon name="layers" className="text-primary" />
           </div>
           <div className="min-w-0">
             <p className="text-xs text-text-muted">{kindLabel} Combo</p>
@@ -305,13 +322,13 @@ export default function ComboDetailPage() {
                   </div>
                   <div className="flex items-center gap-0.5">
                     <button onClick={() => handleMove(idx, -1)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? "text-text-muted/20" : "text-text-muted hover:text-primary hover:bg-black/5"}`} title="Move up">
-                      <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                      <Icon name="arrow_upward" className="text-[16px]" />
                     </button>
                     <button onClick={() => handleMove(idx, 1)} disabled={idx === providers.length - 1} className={`p-1 rounded ${idx === providers.length - 1 ? "text-text-muted/20" : "text-text-muted hover:text-primary hover:bg-black/5"}`} title="Move down">
-                      <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                      <Icon name="arrow_downward" className="text-[16px]" />
                     </button>
                     <button onClick={() => handleRemoveProvider(idx)} className="p-1 rounded text-text-muted hover:text-red-500 hover:bg-red-500/10" title="Remove">
-                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      <Icon name="close" className="text-[16px]" />
                     </button>
                   </div>
                 </div>
@@ -330,6 +347,18 @@ export default function ComboDetailPage() {
               {testing ? "Running..." : "Run"}
             </Button>
           </div>
+          <div className="mb-3">
+            <ExampleFeatureToggles
+              stream={streamMode}
+              onStreamChange={setStreamMode}
+              thinking={thinkingMode}
+              onThinkingChange={setThinkingMode}
+              webFetch={webFetchMode}
+              onWebFetchChange={setWebFetchMode}
+              webSearch={webSearchMode}
+              onWebSearchChange={setWebSearchMode}
+            />
+          </div>
           <pre className="text-xs font-mono bg-black/[0.03] dark:bg-white/[0.03] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap break-all">
             {curlExample}
           </pre>
@@ -345,7 +374,7 @@ export default function ComboDetailPage() {
                 <div>
                   <div className="flex items-center justify-end mb-1.5">
                     <a href={testResult.imageUrl} download="image.png" className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors">
-                      <span className="material-symbols-outlined text-[14px]">download</span>
+                      <Icon name="download" className="text-[14px]" />
                       Download
                     </a>
                   </div>
@@ -356,7 +385,7 @@ export default function ComboDetailPage() {
                 <div>
                   <div className="flex items-center justify-end mb-1.5">
                     <a href={testResult.audioUrl} download="speech.mp3" className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors">
-                      <span className="material-symbols-outlined text-[14px]">download</span>
+                      <Icon name="download" className="text-[14px]" />
                       Download
                     </a>
                   </div>

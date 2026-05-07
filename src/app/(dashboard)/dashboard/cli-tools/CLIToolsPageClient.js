@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardSkeleton } from "@/shared/components";
+import { Card, CardSkeleton , Icon } from "@/shared/components";
 import { CLI_TOOLS } from "@/shared/constants/cliTools";
 import { getModelsByProviderId, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, HermesToolCard, DefaultToolCard, OpenCodeToolCard, CoworkToolCard, MitmLinkCard } from "./components";
@@ -222,7 +222,7 @@ export default function CLIToolsPageClient({ machineId }) {
       </div>
       <div className="grid gap-3 sm:gap-4">
         <div className="flex items-center gap-2 px-1">
-          <span className="material-symbols-outlined text-[18px] text-primary">security</span>
+          <Icon name="security" className="text-[18px] text-primary" />
           <h2 className="text-sm font-semibold text-text-main">MITM Tools</h2>
         </div>
         {mitmTools.map(([toolId, tool]) => (

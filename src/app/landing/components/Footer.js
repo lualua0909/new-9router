@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "@/shared/components/Icon";
 export default function Footer() {
   return (
     <footer className="border-t border-[#3a2f27] bg-[#120f0d] pt-16 pb-8 px-6">
@@ -9,7 +10,7 @@ export default function Footer() {
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
               <div className="size-6 rounded bg-[#f97815] flex items-center justify-center text-white">
-                <span className="material-symbols-outlined text-[16px]">hub</span>
+                <Icon name="hub" className="text-[16px]" />
               </div>
               <h3 className="text-white text-lg font-bold">9Router</h3>
             </div>
@@ -18,7 +19,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-4">
               <a className="text-gray-400 hover:text-white transition-colors" href="https://github.com/decolua/9router" target="_blank" rel="noopener noreferrer">
-                <span className="material-symbols-outlined">code</span>
+                <Icon name="code" />
               </a>
             </div>
           </div>

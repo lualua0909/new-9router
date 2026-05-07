@@ -6,6 +6,7 @@ import ProviderIcon from "@/shared/components/ProviderIcon";
 import Badge from "@/shared/components/Badge";
 import QuotaProgressBar from "./QuotaProgressBar";
 import { calculatePercentage } from "./utils";
+import Icon from "@/shared/components/Icon";
 
 const planVariants = {
   free: "default",
@@ -94,13 +95,7 @@ export default function ProviderLimitCard({
           className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Refresh quota"
         >
-          <span
-            className={`material-symbols-outlined text-[20px] text-text-muted ${
-              refreshing || loading ? "animate-spin" : ""
-            }`}
-          >
-            refresh
-          </span>
+          <Icon name="refresh" className={`text-[20px] text-text-muted ${ refreshing || loading ? "animate-spin" : "" }`} />
         </button>
       </div>
 
@@ -122,9 +117,7 @@ export default function ProviderLimitCard({
       {!loading && error && (
         <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
           <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-red-500 text-[20px]">
-              error
-            </span>
+            <Icon name="error" className="text-red-500 text-[20px]" />
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         </div>
@@ -134,9 +127,7 @@ export default function ProviderLimitCard({
       {!loading && !error && message && (
         <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
           <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-blue-500 text-[20px]">
-              info
-            </span>
+            <Icon name="info" className="text-blue-500 text-[20px]" />
             <p className="text-sm text-blue-600 dark:text-blue-400">
               {message}
             </p>
@@ -173,9 +164,7 @@ export default function ProviderLimitCard({
       {/* Empty State */}
       {!loading && !error && !message && quotas?.length === 0 && (
         <div className="text-center py-8 text-text-muted">
-          <span className="material-symbols-outlined text-[48px] opacity-20">
-            data_usage
-          </span>
+          <Icon name="data_usage" className="text-[48px] opacity-20" />
           <p className="text-sm mt-2">No quota data available</p>
         </div>
       )}

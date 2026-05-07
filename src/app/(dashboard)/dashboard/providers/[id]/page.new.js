@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, Toggle, Select } from "@/shared/components";
+import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, Toggle, Select , Icon } from "@/shared/components";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -451,7 +451,7 @@ export default function ProviderDetailPage() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary"
                 title="Clear search"
               >
-                <span className="material-symbols-outlined text-[16px]">close</span>
+                <Icon name="close" className="text-[16px]" />
               </button>
             )}
           </div>
@@ -564,7 +564,7 @@ export default function ProviderDetailPage() {
           href="/dashboard/providers"
           className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <Icon name="arrow_back" className="text-lg" />
           Back to Providers
         </Link>
         <div className="flex items-center gap-4">
@@ -670,7 +670,7 @@ export default function ProviderDetailPage() {
         {connections.length === 0 ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-              <span className="material-symbols-outlined text-[32px]">{isOAuth ? "lock" : "key"}</span>
+              <Icon name={isOAuth ? "lock" : "key"} className="text-[32px]" />
             </div>
             <p className="text-text-main font-medium mb-1">No connections yet</p>
             <p className="text-sm text-text-muted mb-4">Add your first connection to get started</p>
@@ -774,20 +774,16 @@ function ModelRow({ model, fullModel, alias, selected, onToggleSelect, copied, o
         className={`p-0.5 rounded ${selected ? "text-primary" : "text-text-muted hover:text-primary"}`}
         title={selected ? "Deselect model" : "Select model"}
       >
-        <span className="material-symbols-outlined text-[18px]">
-          {selected ? "check_box" : "check_box_outline_blank"}
-        </span>
+        <Icon name={selected ? "check_box" : "check_box_outline_blank"} className="text-[18px]" />
       </button>
-      <span className="material-symbols-outlined text-base text-text-muted">smart_toy</span>
+      <Icon name="smart_toy" className="text-base text-text-muted" />
       <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
       <button
         onClick={() => onCopy(fullModel, `model-${model.id}`)}
         className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
         title="Copy model"
       >
-        <span className="material-symbols-outlined text-sm">
-          {copied === `model-${model.id}` ? "check" : "content_copy"}
-        </span>
+        <Icon name={copied === `model-${model.id}` ? "check" : "content_copy"} className="text-sm" />
       </button>
     </div>
   );
@@ -904,7 +900,7 @@ PassthroughModelsSection.propTypes = {
 function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-sidebar/50">
-      <span className="material-symbols-outlined text-base text-text-muted">smart_toy</span>
+      <Icon name="smart_toy" className="text-base text-text-muted" />
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{modelId}</p>
@@ -916,9 +912,7 @@ function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias
             className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
             title="Copy model"
           >
-            <span className="material-symbols-outlined text-sm">
-              {copied === `model-${modelId}` ? "check" : "content_copy"}
-            </span>
+            <Icon name={copied === `model-${modelId}` ? "check" : "content_copy"} className="text-sm" />
           </button>
         </div>
       </div>
@@ -929,7 +923,7 @@ function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias
         className="p-1 hover:bg-red-50 rounded text-red-500"
         title="Remove model"
       >
-        <span className="material-symbols-outlined text-sm">delete</span>
+        <Icon name="delete" className="text-sm" />
       </button>
     </div>
   );
@@ -1189,19 +1183,17 @@ function ConnectionRow({ connection, isOAuth, isFirst, isLast, onMoveUp, onMoveD
             disabled={isFirst}
             className={`p-0.5 rounded ${isFirst ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_up</span>
+            <Icon name="keyboard_arrow_up" className="text-sm" />
           </button>
           <button
             onClick={onMoveDown}
             disabled={isLast}
             className={`p-0.5 rounded ${isLast ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+            <Icon name="keyboard_arrow_down" className="text-sm" />
           </button>
         </div>
-        <span className="material-symbols-outlined text-base text-text-muted">
-          {isOAuth ? "lock" : "key"}
-        </span>
+        <Icon name={isOAuth ? "lock" : "key"} className="text-base text-text-muted" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{displayName}</p>
           <div className="flex items-center gap-2 mt-1">
@@ -1230,10 +1222,10 @@ function ConnectionRow({ connection, isOAuth, isFirst, isLast, onMoveUp, onMoveD
         />
         <div className="flex gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary">
-            <span className="material-symbols-outlined text-[18px]">edit</span>
+            <Icon name="edit" className="text-[18px]" />
           </button>
           <button onClick={onDelete} className="p-2 hover:bg-red-500/10 rounded text-red-500">
-            <span className="material-symbols-outlined text-[18px]">delete</span>
+            <Icon name="delete" className="text-[18px]" />
           </button>
         </div>
       </div>

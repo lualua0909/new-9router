@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, Button, ModelSelectModal, ManualConfigModal } from "@/shared/components";
+import { Card, Button, ModelSelectModal, ManualConfigModal , Icon } from "@/shared/components";
 import Image from "next/image";
 import EndpointPresetControl from "./EndpointPresetControl";
 
@@ -206,14 +206,14 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
             <p className="text-xs text-text-muted truncate">{tool.description}</p>
           </div>
         </div>
-        <span className={`material-symbols-outlined text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
+        <Icon name="expand_more" className={`text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`} />
       </div>
 
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4">
           {checking && (
             <div className="flex items-center gap-2 text-text-muted">
-              <span className="material-symbols-outlined animate-spin">progress_activity</span>
+              <Icon name="progress_activity" className="animate-spin" />
               <span>Checking OpenCode CLI...</span>
             </div>
           )}
@@ -222,7 +222,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-yellow-500">warning</span>
+                  <Icon name="warning" className="text-yellow-500" />
                   <div className="flex-1">
                     <p className="font-medium text-yellow-600 dark:text-yellow-400">OpenCode CLI not detected locally</p>
                     <p className="text-sm text-text-muted">Manual configuration is still available if 9router is deployed on a remote server.</p>
@@ -230,11 +230,11 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 </div>
                 <div className="flex items-center gap-2 pl-9">
                   <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
-                    <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
+                    <Icon name="content_copy" className="text-[18px] mr-1" />
                     Manual Config
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setShowInstallGuide(!showInstallGuide)}>
-                    <span className="material-symbols-outlined text-[18px] mr-1">{showInstallGuide ? "expand_less" : "help"}</span>
+                    <Icon name={showInstallGuide ? "expand_less" : "help"} className="text-[18px] mr-1" />
                     {showInstallGuide ? "Hide" : "How to Install"}
                   </Button>
                 </div>
@@ -261,7 +261,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 {status?.config?.provider?.["9router"]?.options?.baseURL && (
                   <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[8rem_auto_1fr_auto] sm:items-center sm:gap-2">
                     <span className="text-xs font-semibold text-text-main sm:text-right sm:text-sm">Current</span>
-                    <span className="material-symbols-outlined hidden text-text-muted text-[14px] sm:inline">arrow_forward</span>
+                    <Icon name="arrow_forward" className="hidden text-text-muted text-[14px] sm:inline" />
                     <span className="min-w-0 truncate rounded bg-surface/40 px-2 py-2 text-xs text-text-muted sm:py-1.5">
                       {status.config.provider["9router"].options.baseURL}
                     </span>
@@ -278,7 +278,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 {/* Base URL */}
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[8rem_auto_1fr_auto] sm:items-center sm:gap-2">
                   <span className="text-xs font-semibold text-text-main sm:text-right sm:text-sm">Base URL</span>
-                  <span className="material-symbols-outlined hidden text-text-muted text-[14px] sm:inline">arrow_forward</span>
+                  <Icon name="arrow_forward" className="hidden text-text-muted text-[14px] sm:inline" />
                   <input
                     type="text"
                     value={getDisplayUrl()}
@@ -288,7 +288,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                   />
                   {customBaseUrl && customBaseUrl !== `${baseUrl}/v1` && (
                     <button onClick={() => setCustomBaseUrl("")} className="p-1 text-text-muted hover:text-primary rounded transition-colors" title="Reset to default">
-                      <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                      <Icon name="restart_alt" className="text-[14px]" />
                     </button>
                   )}
                 </div>
@@ -296,7 +296,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 {/* API Key */}
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[8rem_auto_1fr_auto] sm:items-center sm:gap-2">
                   <span className="text-xs font-semibold text-text-main sm:text-right sm:text-sm">API Key</span>
-                  <span className="material-symbols-outlined hidden text-text-muted text-[14px] sm:inline">arrow_forward</span>
+                  <Icon name="arrow_forward" className="hidden text-text-muted text-[14px] sm:inline" />
                   {apiKeys.length > 0 || selectedApiKey ? (
                     <select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)} className="w-full min-w-0 px-2 py-2 bg-surface rounded text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary/50 sm:py-1.5">
                       {hasCustomSelectedApiKey && <option value={selectedApiKey}>{selectedApiKey}</option>}
@@ -312,7 +312,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 {/* Models */}
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[8rem_auto_1fr] sm:items-start sm:gap-2">
                   <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right pt-1">Models</span>
-                  <span className="material-symbols-outlined text-text-muted text-[14px] mt-1.5">arrow_forward</span>
+                  <Icon name="arrow_forward" className="text-text-muted text-[14px] mt-1.5" />
                   <div className="flex-1 flex flex-col gap-2">
                     <div className="flex flex-wrap gap-1.5 min-h-[28px] px-2 py-1.5 bg-surface rounded border border-border">
                       {selectedModels.length === 0 ? (
@@ -347,7 +347,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                             }`}
                             title={model === activeModel ? "Click to clear active model" : "Click to set as active"}
                           >
-                            {model === activeModel && <span className="material-symbols-outlined text-[10px]">star</span>}
+                            {model === activeModel && <Icon name="star" className="text-[10px]" />}
                             {model}
                             <button
                               onClick={async (e) => {
@@ -368,7 +368,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                               }}
                               className="ml-0.5 hover:text-red-500"
                             >
-                              <span className="material-symbols-outlined text-[12px]">close</span>
+                              <Icon name="close" className="text-[12px]" />
                             </button>
                           </span>
                         ))
@@ -392,7 +392,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                 {/* Subagent Model */}
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[8rem_auto_1fr_auto] sm:items-center sm:gap-2">
                   <span className="text-xs font-semibold text-text-main sm:text-right sm:text-sm">Subagent Model</span>
-                  <span className="material-symbols-outlined hidden text-text-muted text-[14px] sm:inline">arrow_forward</span>
+                  <Icon name="arrow_forward" className="hidden text-text-muted text-[14px] sm:inline" />
                   <input
                     type="text"
                     value={subagentModel}
@@ -413,7 +413,7 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
                       className="p-1 text-text-muted hover:text-red-500 rounded transition-colors"
                       title="Clear (will use main model)"
                     >
-                      <span className="material-symbols-outlined text-[14px]">close</span>
+                      <Icon name="close" className="text-[14px]" />
                     </button>
                   )}
                 </div>
@@ -421,20 +421,20 @@ export default function OpenCodeToolCard({ tool, isExpanded, onToggle, baseUrl, 
 
               {message && (
                 <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs ${message.type === "success" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                  <span className="material-symbols-outlined text-[14px]">{message.type === "success" ? "check_circle" : "error"}</span>
+                  <Icon name={message.type === "success" ? "check_circle" : "error"} className="text-[14px]" />
                   <span>{message.text}</span>
                 </div>
               )}
 
               <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
                 <Button variant="primary" size="sm" onClick={handleApply} disabled={selectedModels.length === 0} loading={applying}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">save</span>Apply
+                  <Icon name="save" className="text-[14px] mr-1" />Apply
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleReset} disabled={!status.has9Router} loading={restoring}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
+                  <Icon name="restore" className="text-[14px] mr-1" />Reset
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)}>
-                  <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
+                  <Icon name="content_copy" className="text-[14px] mr-1" />Manual Config
                 </Button>
               </div>
             </>

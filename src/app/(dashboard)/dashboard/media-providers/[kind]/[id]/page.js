@@ -3,7 +3,7 @@
 import { useParams, notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, AddCustomEmbeddingModal, NoAuthProxyCard, ProviderInfoCard } from "@/shared/components";
+import { Card, Badge, Button, AddCustomEmbeddingModal, NoAuthProxyCard, ProviderInfoCard , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProviderAlias, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
@@ -125,6 +125,10 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
   const [result, setResult] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
   const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
 
@@ -145,7 +149,12 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
 
   // Build request body — include dimensions only if user provided a positive number
   const buildBody = () => {
-    const body = { model: modelFull, input: input.trim() };
+    const body = applyExampleFeatures({ model: modelFull, input: input.trim() }, {
+      stream: streamMode,
+      thinking: thinkingMode,
+      webFetch: webFetchMode,
+      webSearch: webSearchMode,
+    });
     const dim = Number(dimensions);
     if (dimensions && Number.isFinite(dim) && dim > 0) body.dimensions = dim;
     return body;
@@ -153,7 +162,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
 
   const curlSnippet = `curl -X POST ${endpoint}/v1/embeddings \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -d '${JSON.stringify(buildBody())}'`;
 
   const handleRun = async () => {
@@ -165,6 +174,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
     try {
       const headers = { "Content-Type": "application/json" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (streamMode) headers["Accept"] = "text/event-stream";
       const res = await fetch("/api/v1/embeddings", {
         method: "POST",
         headers,
@@ -240,7 +250,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
                   useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
                 }`}
               >
-                <span className="material-symbols-outlined text-[14px]">wifi_tethering</span>
+                <Icon name="wifi_tethering" className="text-[14px]" />
                 Tunnel
               </button>
             )}
@@ -272,10 +282,23 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
                 onClick={() => setInput("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">close</span>
+                <Icon name="close" className="text-[14px]" />
               </button>
             )}
           </div>
+        </Row>
+
+        <Row label="Options">
+          <ExampleFeatureToggles
+            stream={streamMode}
+            onStreamChange={setStreamMode}
+            thinking={thinkingMode}
+            onThinkingChange={setThinkingMode}
+            webFetch={webFetchMode}
+            onWebFetchChange={setWebFetchMode}
+            webSearch={webSearchMode}
+            onWebSearchChange={setWebSearchMode}
+          />
         </Row>
 
         {/* Dimensions (optional) — truncate embedding vector length */}
@@ -299,7 +322,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
                 onClick={() => copyCurl(curlSnippet)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedCurl ? "check" : "content_copy"}</span>
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedCurl ? "Copied" : "Copy"}
               </button>
               <button
@@ -307,9 +330,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
                 disabled={running || !input.trim() || !modelFull}
                 className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
                 {running ? "Running..." : "Run"}
               </button>
             </div>
@@ -331,7 +352,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
                 onClick={() => copyRes(resultJson)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedRes ? "check" : "content_copy"}</span>
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedRes ? "Copied" : "Copy"}
               </button>
             )}
@@ -379,6 +400,10 @@ function TtsExampleCard({ providerId }) {
   const [running, setRunning]           = useState(false);
   const [error, setError]               = useState("");
   const [latency, setLatency]           = useState(null);
+  const [streamMode, setStreamMode]     = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
 
   // Country picker modal state
@@ -513,11 +538,16 @@ function TtsExampleCard({ providerId }) {
   const ttsBody = (() => {
     const b = { model: modelFull, input };
     if (config.hasLanguageHint && languageHint) b.language = languageHint;
-    return b;
+    return applyExampleFeatures(b, {
+      stream: streamMode,
+      thinking: thinkingMode,
+      webFetch: webFetchMode,
+      webSearch: webSearchMode,
+    });
   })();
   const curlSnippet = `curl -X POST ${endpoint}/v1/audio/speech${responseFormat === "json" ? "?response_format=json" : ""} \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -d '${JSON.stringify(ttsBody)}' \\
   ${responseFormat === "json" ? "" : "--output speech.mp3"}`;
 
@@ -531,6 +561,7 @@ function TtsExampleCard({ providerId }) {
     try {
       const headers = { "Content-Type": "application/json" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (streamMode) headers["Accept"] = "text/event-stream";
       const url = `/api/v1/audio/speech${responseFormat === "json" ? "?response_format=json" : ""}`;
       const res = await fetch(url, {
         method: "POST",
@@ -580,7 +611,7 @@ function TtsExampleCard({ providerId }) {
                     useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[14px]">wifi_tethering</span>
+                  <Icon name="wifi_tethering" className="text-[14px]" />
                   Tunnel
                 </button>
               )}
@@ -641,7 +672,7 @@ function TtsExampleCard({ providerId }) {
                   onClick={openModal}
                   className="flex w-full items-center justify-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-border text-text-muted hover:text-primary hover:border-primary/40 transition-colors sm:w-auto sm:shrink-0"
                 >
-                  <span className="material-symbols-outlined text-[14px]">language</span>
+                  <Icon name="language" className="text-[14px]" />
                   Select language
                 </button>
               </div>
@@ -699,7 +730,7 @@ function TtsExampleCard({ providerId }) {
                       onClick={() => { setVoiceId(""); setSelectedVoice(""); }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
                     >
-                      <span className="material-symbols-outlined text-[14px]">close</span>
+                      <Icon name="close" className="text-[14px]" />
                     </button>
                   )}
                 </div>
@@ -740,7 +771,7 @@ function TtsExampleCard({ providerId }) {
                   onClick={() => setInput("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px]">close</span>
+                  <Icon name="close" className="text-[14px]" />
                 </button>
               )}
             </div>
@@ -758,6 +789,19 @@ function TtsExampleCard({ providerId }) {
             </select>
           </Row>
 
+          <Row label="Options">
+            <ExampleFeatureToggles
+              stream={streamMode}
+              onStreamChange={setStreamMode}
+              thinking={thinkingMode}
+              onThinkingChange={setThinkingMode}
+              webFetch={webFetchMode}
+              onWebFetchChange={setWebFetchMode}
+              webSearch={webSearchMode}
+              onWebSearchChange={setWebSearchMode}
+            />
+          </Row>
+
           {/* Curl + Run */}
           <div className="mt-1">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
@@ -767,7 +811,7 @@ function TtsExampleCard({ providerId }) {
                   onClick={() => copyCurl(curlSnippet)}
                   className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px]">{copiedCurl ? "check" : "content_copy"}</span>
+                  <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
                   {copiedCurl ? "Copied" : "Copy"}
                 </button>
                 <button
@@ -775,9 +819,7 @@ function TtsExampleCard({ providerId }) {
                   disabled={running || !input.trim() || !modelFull}
                   className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-                    play_arrow
-                  </span>
+                  <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
                   {running ? "Generating..." : "Run"}
                 </button>
               </div>
@@ -795,7 +837,7 @@ function TtsExampleCard({ providerId }) {
                   Response {latency && <span className="font-normal normal-case">&#9889; {latency}ms</span>}
                 </span>
                 <a href={audioUrl} download="speech.mp3" className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-[14px]">download</span>
+                  <Icon name="download" className="text-[14px]" />
                   Download
                 </a>
               </div>
@@ -841,7 +883,7 @@ function TtsExampleCard({ providerId }) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 rounded-t-xl">
               <h3 className="text-sm font-semibold">Select Language</h3>
               <button onClick={() => setModalOpen(false)} className="text-text-muted hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <Icon name="close" className="text-[20px]" />
               </button>
             </div>
 
@@ -875,7 +917,7 @@ function TtsExampleCard({ providerId }) {
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-text-muted">{c.voices.length} voices</span>
                         {selectedLang === c.code && (
-                          <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                          <Icon name="check" className="text-[16px] text-primary" />
                         )}
                       </div>
                     </button>
@@ -928,6 +970,10 @@ function GenericExampleCard({ providerId, kind }) {
   const [error, setError] = useState("");
   const [connections, setConnections] = useState([]);
   const [pinnedConnectionId, setPinnedConnectionId] = useState("");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
   const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
 
@@ -968,17 +1014,22 @@ function GenericExampleCard({ providerId, kind }) {
     acc[k] = v;
     return acc;
   }, {});
-  const requestBody = {
+  const requestBody = applyExampleFeatures({
     model: modelFull,
     [exConfig.bodyKey]: input,
     ...exConfig.extraBody,
     ...extraBodyFromFields,
     ...(supportsEdit && refImage.trim() ? { image: refImage.trim() } : {}),
-  };
+  }, {
+    stream: streamMode,
+    thinking: thinkingMode,
+    webFetch: webFetchMode,
+    webSearch: webSearchMode,
+  });
 
   // Streaming supported for codex image (Plus/Pro accounts) — disabled when binary output requested
   const wantBinary = kind === "image" && imageOutputFormat === "binary";
-  const useStreaming = kind === "image" && providerId === "codex" && !wantBinary;
+  const useStreaming = streamMode && kind === "image" && providerId === "codex" && !wantBinary;
   const apiPathWithQuery = `${apiPath}${wantBinary ? "?response_format=binary" : ""}`;
   const headersPreview = `-H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${pinnedConnectionId ? ` \\\n  -H "x-connection-id: ${pinnedConnectionId}"` : ""}${useStreaming ? ` \\\n  -H "Accept: text/event-stream"` : ""}`;
   const curlSnippet = `curl -X ${kindConfig.endpoint.method} ${endpoint}${apiPathWithQuery} \\
@@ -1121,7 +1172,7 @@ function GenericExampleCard({ providerId, kind }) {
                   useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
                 }`}
               >
-                <span className="material-symbols-outlined text-[14px]">wifi_tethering</span>
+                <Icon name="wifi_tethering" className="text-[14px]" />
                 Tunnel
               </button>
             )}
@@ -1172,7 +1223,7 @@ function GenericExampleCard({ providerId, kind }) {
                 onClick={() => setInput("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">close</span>
+                <Icon name="close" className="text-[14px]" />
               </button>
             )}
           </div>
@@ -1195,7 +1246,7 @@ function GenericExampleCard({ providerId, kind }) {
                     onClick={() => setRefImage("")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
                   >
-                    <span className="material-symbols-outlined text-[14px]">close</span>
+                    <Icon name="close" className="text-[14px]" />
                   </button>
                 )}
               </div>
@@ -1262,6 +1313,20 @@ function GenericExampleCard({ providerId, kind }) {
           </Row>
         )}
 
+        <Row label="Options">
+          <ExampleFeatureToggles
+            stream={streamMode}
+            onStreamChange={setStreamMode}
+            streamDisabled={kind === "image" && providerId !== "codex"}
+            thinking={thinkingMode}
+            onThinkingChange={setThinkingMode}
+            webFetch={webFetchMode}
+            onWebFetchChange={setWebFetchMode}
+            webSearch={webSearchMode}
+            onWebSearchChange={setWebSearchMode}
+          />
+        </Row>
+
         {/* Curl + Run */}
         <div className="mt-1">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
@@ -1271,7 +1336,7 @@ function GenericExampleCard({ providerId, kind }) {
                 onClick={() => copyCurl(curlSnippet)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedCurl ? "check" : "content_copy"}</span>
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedCurl ? "Copied" : "Copy"}
               </button>
             <button
@@ -1279,9 +1344,7 @@ function GenericExampleCard({ providerId, kind }) {
               disabled={running || !input.trim() || !modelFull}
               className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <span className="material-symbols-outlined text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
                 {running ? "Running..." : "Run"}
               </button>
             </div>
@@ -1292,9 +1355,7 @@ function GenericExampleCard({ providerId, kind }) {
         {/* Streaming progress */}
         {(running || progress) && useStreaming && (
           <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-sidebar border border-border sm:flex-row sm:items-center sm:gap-3">
-            <span className="material-symbols-outlined text-[16px] text-primary" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-              {running ? "progress_activity" : "check_circle"}
-            </span>
+            <Icon name={running ? "progress_activity" : "check_circle"} className="text-[16px] text-primary" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
             <span className="text-xs text-text-muted">
               {progress?.stage || "starting"}
               {!running && progress?.bytesReceived ? ` · ${(progress.bytesReceived / 1024).toFixed(1)} KB` : ""}
@@ -1328,7 +1389,7 @@ function GenericExampleCard({ providerId, kind }) {
                 onClick={() => copyRes(resultJson)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedRes ? "check" : "content_copy"}</span>
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedRes ? "Copied" : "Copy"}
               </button>
             )}
@@ -1344,7 +1405,7 @@ function GenericExampleCard({ providerId, kind }) {
                   download="image.png"
                   className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px]">download</span>
+                  <Icon name="download" className="text-[14px]" />
                   Download
                 </a>
               </div>
@@ -1385,6 +1446,10 @@ function SttExampleCard({ providerId }) {
   const [latency, setLatency] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [streamMode, setStreamMode] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [webFetchMode, setWebFetchMode] = useState(false);
+  const [webSearchMode, setWebSearchMode] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
   const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
 
@@ -1420,9 +1485,9 @@ function SttExampleCard({ providerId }) {
   const modelFull = selectedModel ? `${providerAlias}/${selectedModel}` : "";
 
   const curlSnippet = `curl -X POST ${endpoint}/v1/audio/transcriptions \\
-  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -F "file=@${audioFile?.name || "audio.mp3"}" \\
-  -F "model=${modelFull}"${allowedParams.includes("language") && language ? ` \\\n  -F "language=${language}"` : ""}${allowedParams.includes("response_format") ? ` \\\n  -F "response_format=${responseFormat}"` : ""}${allowedParams.includes("temperature") && temperature ? ` \\\n  -F "temperature=${temperature}"` : ""}${allowedParams.includes("prompt") && prompt ? ` \\\n  -F "prompt=${prompt}"` : ""}`;
+  -F "model=${modelFull}"${streamMode ? ` \\\n  -F "stream=true"` : ""}${thinkingMode ? ` \\\n  -F "reasoning_effort=medium"` : ""}${webFetchMode ? ` \\\n  -F "web_fetch=true"` : ""}${webSearchMode ? ` \\\n  -F "web_search=true"` : ""}${allowedParams.includes("language") && language ? ` \\\n  -F "language=${language}"` : ""}${allowedParams.includes("response_format") ? ` \\\n  -F "response_format=${responseFormat}"` : ""}${allowedParams.includes("temperature") && temperature ? ` \\\n  -F "temperature=${temperature}"` : ""}${allowedParams.includes("prompt") && prompt ? ` \\\n  -F "prompt=${prompt}"` : ""}`;
 
   const handleRun = async () => {
     if (!audioFile || !modelFull) return;
@@ -1434,6 +1499,10 @@ function SttExampleCard({ providerId }) {
       const fd = new FormData();
       fd.append("file", audioFile);
       fd.append("model", modelFull);
+      if (streamMode) fd.append("stream", "true");
+      if (thinkingMode) fd.append("reasoning_effort", "medium");
+      if (webFetchMode) fd.append("web_fetch", "true");
+      if (webSearchMode) fd.append("web_search", "true");
       if (allowedParams.includes("language") && language) fd.append("language", language);
       if (allowedParams.includes("response_format")) fd.append("response_format", responseFormat);
       if (allowedParams.includes("temperature") && temperature) fd.append("temperature", temperature);
@@ -1441,6 +1510,7 @@ function SttExampleCard({ providerId }) {
 
       const headers = {};
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (streamMode) headers["Accept"] = "text/event-stream";
       const res = await fetch("/api/v1/audio/transcriptions", { method: "POST", headers, body: fd });
       setLatency(Date.now() - start);
       const ct = res.headers.get("content-type") || "";
@@ -1501,7 +1571,7 @@ function SttExampleCard({ providerId }) {
                   useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
                 }`}
               >
-                <span className="material-symbols-outlined text-[14px]">wifi_tethering</span>
+                <Icon name="wifi_tethering" className="text-[14px]" />
                 Tunnel
               </button>
             )}
@@ -1589,6 +1659,19 @@ function SttExampleCard({ providerId }) {
           </Row>
         )}
 
+        <Row label="Options">
+          <ExampleFeatureToggles
+            stream={streamMode}
+            onStreamChange={setStreamMode}
+            thinking={thinkingMode}
+            onThinkingChange={setThinkingMode}
+            webFetch={webFetchMode}
+            onWebFetchChange={setWebFetchMode}
+            webSearch={webSearchMode}
+            onWebSearchChange={setWebSearchMode}
+          />
+        </Row>
+
         {/* Curl + Run */}
         <div className="mt-1">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
@@ -1598,7 +1681,7 @@ function SttExampleCard({ providerId }) {
                 onClick={() => copyCurl(curlSnippet)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedCurl ? "check" : "content_copy"}</span>
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedCurl ? "Copied" : "Copy"}
               </button>
               <button
@@ -1606,9 +1689,7 @@ function SttExampleCard({ providerId }) {
                 disabled={running || !audioFile || !modelFull}
                 className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined}>
-                  play_arrow
-                </span>
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
                 {running ? "Transcribing..." : "Run"}
               </button>
             </div>
@@ -1629,7 +1710,7 @@ function SttExampleCard({ providerId }) {
                 onClick={() => copyRes(resultStr)}
                 className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-[14px]">{copiedRes ? "check" : "content_copy"}</span>
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
                 {copiedRes ? "Copied" : "Copy"}
               </button>
             )}
@@ -1705,7 +1786,7 @@ export default function MediaProviderDetailPage() {
           href={`/dashboard/media-providers/${kind}`}
           className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <Icon name="arrow_back" className="text-lg" />
           {kindConfig.label}
         </Link>
 
@@ -1731,7 +1812,7 @@ export default function MediaProviderDetailPage() {
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  <Icon name="open_in_new" className="text-sm" />
                   Get API Key
                 </a>
               )}
@@ -1761,7 +1842,7 @@ export default function MediaProviderDetailPage() {
       {/* Kind-specific notice (e.g. codex/image requires Plus) */}
       {!isCustom && provider.kindNotice?.[kind] && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
-          <span className="material-symbols-outlined text-[20px] mt-0.5">warning</span>
+          <Icon name="warning" className="text-[20px] mt-0.5" />
           <p className="text-sm">{provider.kindNotice[kind]}</p>
         </div>
       )}
@@ -1769,7 +1850,7 @@ export default function MediaProviderDetailPage() {
       {/* Provider notice text (only when there's actual text content) */}
       {!isCustom && provider.notice?.text && !provider.deprecated && (
         <div className="flex flex-col gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 sm:flex-row sm:items-center">
-          <span className="material-symbols-outlined text-[16px] text-blue-500 shrink-0">info</span>
+          <Icon name="info" className="text-[16px] text-blue-500 shrink-0" />
           <p className="min-w-0 flex-1 text-xs leading-relaxed text-blue-600 dark:text-blue-400">{provider.notice.text}</p>
           {provider.notice.apiKeyUrl && (
             <a
