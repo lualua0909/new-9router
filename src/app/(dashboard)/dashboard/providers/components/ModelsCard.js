@@ -117,6 +117,19 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
   const providerAlias = providerAliasOverride || getProviderAlias(providerId);
   const effectiveType = kindFilter || "llm";
 
+  // Copy + broadcast: Example cards listen and auto-fill their model input
+  const handleCopyModel = useCallback((fullModel, key) => {
+    copy(fullModel, key);
+    const modelId = fullModel.startsWith(`${providerAlias}/`)
+      ? fullModel.slice(providerAlias.length + 1)
+      : fullModel;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("mediaProviderModelCopied", {
+        detail: { providerId, providerAlias, kind: kindFilter, modelId, fullModel },
+      }));
+    }
+  }, [copy, providerAlias, providerId, kindFilter]);
+
   const fetchData = useCallback(async () => {
     try {
       const [aliasRes, connRes, customRes] = await Promise.all([
@@ -234,7 +247,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
                 fullModel={`${providerAlias}/${model.id}`}
                 alias={existingAlias}
                 copied={copied}
-                onCopy={copy}
+                onCopy={handleCopyModel}
                 onSetAlias={(alias) => handleSetAlias(model.id, alias)}
                 onDeleteAlias={() => handleDeleteAlias(existingAlias)}
                 testStatus={modelTestResults[model.id]}
@@ -251,7 +264,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
               model={{ id: model.id, name: model.name }}
               fullModel={`${providerAlias}/${model.id}`}
               copied={copied}
-              onCopy={copy}
+              onCopy={handleCopyModel}
               onSetAlias={() => {}}
               onDeleteAlias={() => handleDeleteCustomModel(model.id)}
               testStatus={modelTestResults[model.id]}

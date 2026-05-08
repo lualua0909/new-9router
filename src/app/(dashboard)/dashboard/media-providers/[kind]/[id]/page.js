@@ -144,6 +144,14 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const onModelCopied = (e) => {
+      if (e.detail?.providerId === providerId && e.detail?.modelId) setSelectedModel(e.detail.modelId);
+    };
+    window.addEventListener("mediaProviderModelCopied", onModelCopied);
+    return () => window.removeEventListener("mediaProviderModelCopied", onModelCopied);
+  }, [providerId]);
+
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   const modelFull = selectedModel ? `${providerAlias}/${selectedModel}` : "";
 
@@ -366,6 +374,218 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
   );
 }
 
+// ─── Reranker Example Card ───────────────────────────────────────────────────
+function RerankerExampleCard({ providerId }) {
+  const providerAlias = getProviderAlias(providerId);
+  const cfgModels = AI_PROVIDERS[providerId]?.rerankerConfig?.models || [];
+  const allowManual = cfgModels.length === 0;
+
+  const [selectedModel, setSelectedModel] = useState(cfgModels[0]?.id ?? "");
+  const [query, setQuery] = useState("What is the capital of France?");
+  const [documentsText, setDocumentsText] = useState(
+    "Paris is the capital and most populous city of France.\nLondon is the capital city of the United Kingdom.\nThe Eiffel Tower is located in Paris.\nMadrid is the capital of Spain."
+  );
+  const [topN, setTopN] = useState("3");
+  const [apiKey, setApiKey] = useState("");
+  const [useTunnel, setUseTunnel] = useState(false);
+  const [localEndpoint, setLocalEndpoint] = useState("");
+  const [tunnelEndpoint, setTunnelEndpoint] = useState("");
+  const [result, setResult] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
+  const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
+
+  useEffect(() => {
+    setLocalEndpoint(window.location.origin);
+    fetch("/api/keys").then((r) => r.json())
+      .then((d) => setApiKey((d.keys || []).find((k) => k.isActive !== false)?.key || ""))
+      .catch(() => {});
+    fetch("/api/tunnel/status").then((r) => r.json())
+      .then((d) => { if (d.publicUrl) setTunnelEndpoint(d.publicUrl); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const onModelCopied = (e) => {
+      if (e.detail?.providerId === providerId && e.detail?.modelId) setSelectedModel(e.detail.modelId);
+    };
+    window.addEventListener("mediaProviderModelCopied", onModelCopied);
+    return () => window.removeEventListener("mediaProviderModelCopied", onModelCopied);
+  }, [providerId]);
+
+  const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
+  const modelFull = selectedModel ? `${providerAlias}/${selectedModel}` : "";
+  const documents = documentsText.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  const buildBody = () => {
+    const b = { model: modelFull, query: query.trim(), documents };
+    const n = Number(topN);
+    if (Number.isFinite(n) && n > 0) b.top_n = n;
+    return b;
+  };
+
+  const curlSnippet = `curl -X POST ${endpoint}/v1/reranking \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}" \\
+  -d '${JSON.stringify(buildBody())}'`;
+
+  const handleRun = async () => {
+    if (!query.trim() || !modelFull || documents.length === 0) return;
+    setRunning(true); setError(""); setResult(null);
+    const start = Date.now();
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      const res = await fetch("/api/v1/reranking", { method: "POST", headers, body: JSON.stringify(buildBody()) });
+      const latencyMs = Date.now() - start;
+      const data = await res.json();
+      if (!res.ok) { setError(data?.error?.message || data?.error || `HTTP ${res.status}`); return; }
+      setResult({ data, latencyMs });
+    } catch (e) {
+      setError(e.message || "Network error");
+    } finally { setRunning(false); }
+  };
+
+  const resultJson = result ? JSON.stringify(result.data, null, 2) : "";
+
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold mb-4">Example</h2>
+
+      <div className="flex flex-col gap-2.5">
+        <Row label="Model">
+          {allowManual ? (
+            <input
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              placeholder="e.g. rerank-v3.5, jina-reranker-v2-base-multilingual"
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+            />
+          ) : (
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+            >
+              {cfgModels.map((m) => (
+                <option key={m.id} value={m.id}>{m.name || m.id}</option>
+              ))}
+            </select>
+          )}
+        </Row>
+
+        <Row label="Endpoint">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <input
+              value={endpoint}
+              onChange={(e) => useTunnel ? setTunnelEndpoint(e.target.value) : setLocalEndpoint(e.target.value)}
+              className="w-full min-w-0 flex-1 px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+              placeholder="http://localhost:3000"
+            />
+            {tunnelEndpoint && (
+              <button
+                onClick={() => setUseTunnel((v) => !v)}
+                className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border shrink-0 transition-colors ${
+                  useTunnel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-muted hover:text-primary"
+                }`}
+              >
+                <Icon name="wifi_tethering" className="text-[14px]" />
+                Tunnel
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <Row label="API Key">
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+          />
+        </Row>
+
+        <Row label="Query">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+          />
+        </Row>
+
+        <Row label="Documents">
+          <textarea
+            value={documentsText}
+            onChange={(e) => setDocumentsText(e.target.value)}
+            rows={5}
+            placeholder="One document per line"
+            className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary font-mono"
+          />
+        </Row>
+
+        <Row label="top_n">
+          <input
+            type="number"
+            min="1"
+            value={topN}
+            onChange={(e) => setTopN(e.target.value)}
+            placeholder="optional, e.g. 3"
+            className="w-full px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+          />
+        </Row>
+
+        <div className="mt-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Request</span>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <button
+                onClick={() => copyCurl(curlSnippet)}
+                className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
+              >
+                <Icon name={copiedCurl ? "check" : "content_copy"} className="text-[14px]" />
+                {copiedCurl ? "Copied" : "Copy"}
+              </button>
+              <button
+                onClick={handleRun}
+                disabled={running || !query.trim() || !modelFull || documents.length === 0}
+                className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="play_arrow" className="text-[14px]" style={running ? { animation: "spin 1s linear infinite" } : undefined} />
+                {running ? "Running..." : "Run"}
+              </button>
+            </div>
+          </div>
+          <pre className="bg-sidebar rounded-lg px-3 py-2.5 text-xs font-mono text-text-main overflow-x-auto whitespace-pre-wrap break-all">{curlSnippet}</pre>
+        </div>
+
+        {error && <p className="text-xs text-red-500 break-words">{error}</p>}
+
+        <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+              Response {result && <span className="font-normal normal-case">&#9889; {result.latencyMs}ms</span>}
+            </span>
+            {result && (
+              <button
+                onClick={() => copyRes(resultJson)}
+                className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
+              >
+                <Icon name={copiedRes ? "check" : "content_copy"} className="text-[14px]" />
+                {copiedRes ? "Copied" : "Copy"}
+              </button>
+            )}
+          </div>
+          <pre className="bg-sidebar rounded-lg px-3 py-2.5 text-xs font-mono text-text-main overflow-x-auto whitespace-pre-wrap break-all opacity-70">
+            {resultJson || `{\n  "model": "${providerAlias}/${selectedModel || "<model>"}",\n  "results": [\n    { "index": 0, "relevance_score": 0.97 },\n    { "index": 2, "relevance_score": 0.83 }\n  ]\n}`}
+          </pre>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── TTS Example Card ────────────────────────────────────────────────────────
 function TtsExampleCard({ providerId }) {
   const providerAlias = getProviderAlias(providerId);
@@ -524,6 +744,14 @@ function TtsExampleCard({ providerId }) {
         c.code.toLowerCase().includes(modalSearch.toLowerCase())
       )
     : languages;
+
+  useEffect(() => {
+    const onModelCopied = (e) => {
+      if (e.detail?.providerId === providerId && e.detail?.modelId) setSelectedModel(e.detail.modelId);
+    };
+    window.addEventListener("mediaProviderModelCopied", onModelCopied);
+    return () => window.removeEventListener("mediaProviderModelCopied", onModelCopied);
+  }, [providerId]);
 
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   // For ElevenLabs/config-driven: prefer manual voiceId (if any), else fall back to selectedVoice
@@ -999,6 +1227,14 @@ function GenericExampleCard({ providerId, kind }) {
 
   // Safe to early-return now that all hooks are declared
   if (!kindConfig || !exConfig) return null;
+
+  useEffect(() => {
+    const onModelCopied = (e) => {
+      if (e.detail?.providerId === providerId && e.detail?.modelId) setSelectedModel(e.detail.modelId);
+    };
+    window.addEventListener("mediaProviderModelCopied", onModelCopied);
+    return () => window.removeEventListener("mediaProviderModelCopied", onModelCopied);
+  }, [providerId]);
 
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   const apiPath = kindConfig.endpoint.path;
@@ -1481,6 +1717,14 @@ function SttExampleCard({ providerId }) {
     };
   }, [providerAlias]);
 
+  useEffect(() => {
+    const onModelCopied = (e) => {
+      if (e.detail?.providerId === providerId && e.detail?.modelId) setSelectedModel(e.detail.modelId);
+    };
+    window.addEventListener("mediaProviderModelCopied", onModelCopied);
+    return () => window.removeEventListener("mediaProviderModelCopied", onModelCopied);
+  }, [providerId]);
+
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   const modelFull = selectedModel ? `${providerAlias}/${selectedModel}` : "";
 
@@ -1882,13 +2126,14 @@ export default function MediaProviderDetailPage() {
       )}
 
       {/* Provider Info — config-driven, supports searchConfig, fetchConfig, ttsConfig, embeddingConfig, searchViaChat */}
-      {!isCustom && (provider.searchConfig || provider.fetchConfig || provider.ttsConfig || provider.sttConfig || provider.embeddingConfig || provider.searchViaChat) && (
+      {!isCustom && (provider.searchConfig || provider.fetchConfig || provider.ttsConfig || provider.sttConfig || provider.embeddingConfig || provider.rerankerConfig || provider.searchViaChat) && (
         <ProviderInfoCard
           config={
             kind === "webFetch" ? provider.fetchConfig
               : kind === "tts" ? provider.ttsConfig
               : kind === "stt" ? provider.sttConfig
               : kind === "embedding" ? provider.embeddingConfig
+              : kind === "reranker" ? provider.rerankerConfig
               : provider.searchConfig || { mode: "chat-completions", defaultModel: provider.searchViaChat?.defaultModel, pricingUrl: provider.searchViaChat?.pricingUrl, freeTier: provider.searchViaChat?.freeTier }
           }
           provider={provider}
@@ -1900,6 +2145,7 @@ export default function MediaProviderDetailPage() {
       {kind === "embedding" && (
         <EmbeddingExampleCard providerId={id} customAlias={customNode?.prefix} />
       )}
+      {kind === "reranker" && <RerankerExampleCard providerId={id} />}
       {kind === "tts" && <TtsExampleCard providerId={id} />}
       {kind === "stt" && !isCustom && <SttExampleCard providerId={id} />}
       {!isCustom && KIND_EXAMPLE_CONFIG[kind] && <GenericExampleCard providerId={id} kind={kind} />}

@@ -45,9 +45,13 @@ export async function handleStt(request) {
   const { provider, model } = modelInfo;
   log.info("ROUTING", `Provider: ${provider}, Model: ${model}`);
 
-  // noAuth providers
+  // noAuth providers — best-effort credential lookup so providerSpecificData
+  // (e.g. lm-studio baseUrl) reaches the handler.
   if (!CREDENTIALED_PROVIDERS.has(provider)) {
-    const result = await handleSttCore({ provider, model, formData });
+    let credentials = null;
+    try { credentials = await getProviderCredentials(provider, new Set(), model); } catch {}
+    if (credentials?.allRateLimited) credentials = null;
+    const result = await handleSttCore({ provider, model, formData, credentials });
     if (result.success) return result.response;
     return errorResponse(result.status || HTTP_STATUS.BAD_GATEWAY, result.error || "STT failed");
   }

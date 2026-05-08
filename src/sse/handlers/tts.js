@@ -71,9 +71,13 @@ async function handleSingleModelTts(body, modelStr, responseFormat, language) {
   const { provider, model } = modelInfo;
   log.info("ROUTING", `Provider: ${provider}, Voice: ${model}`);
 
-  // noAuth providers — no credential needed
+  // noAuth providers — auth not required, but still load any connection (best-effort)
+  // so providerSpecificData (e.g. lm-studio baseUrl) reaches the adapter.
   if (!CREDENTIALED_PROVIDERS.has(provider)) {
-    const result = await handleTtsCore({ provider, model, input: body.input, responseFormat, language });
+    let credentials = null;
+    try { credentials = await getProviderCredentials(provider, new Set(), model); } catch {}
+    if (credentials?.allRateLimited) credentials = null;
+    const result = await handleTtsCore({ provider, model, input: body.input, credentials, responseFormat, language });
     if (result.success) return result.response;
     return errorResponse(result.status || HTTP_STATUS.BAD_GATEWAY, result.error || "TTS failed");
   }
