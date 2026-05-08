@@ -47,6 +47,7 @@ function ExampleCard({ combos }) {
   const [result, setResult] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
   const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
 
@@ -132,8 +133,18 @@ function ExampleCard({ combos }) {
 
   return (
     <Card>
-      <h2 className="mb-4 text-lg font-semibold">Example</h2>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Example</h2>
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
+        >
+          <Icon name={collapsed ? "expand_more" : "expand_less"} className="text-[18px]" />
+        </button>
+      </div>
+      {!collapsed && (
+      <div className="flex flex-col gap-2.5 mt-4">
         <Row label="Combo">
           <select
             value={selectedCombo}
@@ -268,6 +279,7 @@ function ExampleCard({ combos }) {
           </pre>
         </div>
       </div>
+      )}
     </Card>
   );
 }

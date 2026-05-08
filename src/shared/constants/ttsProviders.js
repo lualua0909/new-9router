@@ -109,12 +109,6 @@ export const TTS_PROVIDER_CONFIG = {
     hasVoiceIdInput: true,
     voiceSource: "config",
   },
-  "lm-studio": {
-    hasModelSelector: true,
-    hasBrowseButton: false,
-    hasVoiceIdInput: true,
-    voiceSource: "config",
-  },
   "gemini": {
     hasLanguageDropdown: false,
     hasLanguageHint: true, // sends body.language to guide TTS pronunciation

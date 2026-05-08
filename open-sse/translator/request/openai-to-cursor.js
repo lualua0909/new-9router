@@ -13,11 +13,11 @@ function extractContent(content) {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
-      .filter(part => {
+      .filter((part) => {
         if (!part || typeof part !== "object") return false;
         return part.type === "text" && typeof part.text === "string";
       })
-      .map(part => part.text || "")
+      .map((part) => part.text || "")
       .join("");
   }
   return "";
@@ -29,7 +29,10 @@ function sanitizeToolResultText(text) {
 }
 
 function escapeXml(text) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function buildToolResultBlock(toolName, toolCallId, resultText) {
@@ -49,7 +52,7 @@ function normalizeToolCallId(id) {
 
 function convertMessages(messages) {
   const result = [];
-  
+
   // Build a map of tool_call_id -> tool name from assistant tool calls
   const toolCallMetaMap = new Map();
   const rememberToolMeta = (toolCallId, toolName) => {
@@ -127,17 +130,21 @@ function convertMessages(messages) {
 
       const content = extractContent(msg.content);
 
-      if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+      if (
+        msg.role === "assistant" &&
+        msg.tool_calls &&
+        msg.tool_calls.length > 0
+      ) {
         const assistantMsg = { role: "assistant", content: content || "" };
-        assistantMsg.tool_calls = msg.tool_calls.map(tc => {
+        assistantMsg.tool_calls = msg.tool_calls.map((tc) => {
           const { index, ...rest } = tc || {};
           return rest;
         });
         result.push(assistantMsg);
       } else if (msg.role === "assistant" && Array.isArray(msg.content)) {
         const extractedToolCalls = msg.content
-          .filter(b => b?.type === "tool_use")
-          .map(b => ({
+          .filter((b) => b?.type === "tool_use")
+          .map((b) => ({
             id: b.id || "",
             type: "function",
             function: {
@@ -145,7 +152,7 @@ function convertMessages(messages) {
               arguments: JSON.stringify(b.input || {})
             }
           }))
-          .filter(tc => tc.id);
+          .filter((tc) => tc.id);
 
         if (extractedToolCalls.length > 0) {
           result.push({
@@ -171,13 +178,29 @@ export function buildCursorRequest(model, body, stream, credentials) {
   const messages = convertMessages(body.messages || []);
 
   // Strip fields irrelevant to Cursor (OpenAI/Anthropic-specific)
-  const { user, metadata, tool_choice, stream_options, system, ...rest } = body;
+  const {
+    user,
+    metadata,
+    tool_choice,
+    stream_options,
+    system,
+    tools,
+    ...rest
+  } = body;
 
-  return {
+  // Cursor doesn't support external function tools (web_fetch, web_search, etc.)
+  // Only its built-in MCP tools (ask_question, etc.) are supported
+  // Filter out all external tools to avoid sending unsupported tools to Cursor API
+  const filtered = {
     ...rest,
     messages,
     max_tokens: 32000
   };
+
+  // Don't include tools field - Cursor will only use its built-in tools
+  // If needed in future, we could filter to keep only specific built-in tool types
+
+  return filtered;
 }
 
 register(FORMATS.OPENAI, FORMATS.CURSOR, buildCursorRequest, null);

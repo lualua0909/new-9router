@@ -6,7 +6,6 @@ import elevenlabs, { fetchElevenLabsVoices } from "./elevenlabs.js";
 import openai from "./openai.js";
 import openrouter from "./openrouter.js";
 import gemini, { fetchGeminiVoices } from "./gemini.js";
-import lmStudio from "./lmStudio.js";
 import { FORMAT_HANDLERS } from "./genericFormats.js";
 import { parseModelVoice } from "./_base.js";
 
@@ -19,7 +18,6 @@ const SPECIAL_ADAPTERS = {
   openai,
   openrouter,
   gemini,
-  "lm-studio": lmStudio,
 };
 
 export function getTtsAdapter(provider) {

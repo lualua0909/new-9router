@@ -2,7 +2,6 @@ import { Buffer } from "node:buffer";
 import { createErrorResult } from "../utils/error.js";
 import { HTTP_STATUS } from "../config/runtimeConfig.js";
 import { AI_PROVIDERS } from "../../src/shared/constants/providers.js";
-import { resolveLmStudioHost } from "../config/providers.js";
 
 // Build auth headers from sttConfig + token
 function buildAuthHeaders(cfg, token) {
@@ -172,14 +171,8 @@ export async function handleSttCore({ provider, model, formData, credentials }) 
   const file = formData.get("file");
   if (!file) return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Missing required field: file");
 
-  let cfg = AI_PROVIDERS[provider]?.sttConfig;
+  const cfg = AI_PROVIDERS[provider]?.sttConfig;
   if (!cfg) return createErrorResult(HTTP_STATUS.BAD_REQUEST, `Provider '${provider}' does not support STT`);
-
-  // LM Studio host is per-connection configurable via providerSpecificData.baseUrl
-  if (provider === "lm-studio") {
-    cfg = { ...cfg, baseUrl: `${resolveLmStudioHost(credentials)}/v1/audio/transcriptions` };
-    if (!model) return createErrorResult(HTTP_STATUS.BAD_REQUEST, "LM Studio STT requires a model id (load a Whisper/STT model in LM Studio first).");
-  }
 
   const token = cfg.authType === "none" ? null : (credentials?.apiKey || credentials?.accessToken);
   if (cfg.authType !== "none" && !token) {
