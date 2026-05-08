@@ -204,7 +204,7 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, pr
       tokens: usage,
       response: {
         content: parsed.choices?.[0]?.message?.content || null,
-        thinking: parsed.choices?.[0]?.message?.reasoning_content || null,
+        thinking: parsed.choices?.[0]?.message?.reasoning_content || parsed.choices?.[0]?.message?.reasoning || null,
         finish_reason: parsed.choices?.[0]?.finish_reason || "unknown"
       },
       status: "success"

@@ -264,6 +264,7 @@ export class CursorExecutor extends BaseExecutor {
 
     let offset = 0;
     let totalContent = "";
+    let totalThinking = "";
     const toolCalls = [];
     const toolCallsMap = new Map(); // Track streaming tool calls by ID
     const finalizedIds = new Set();
@@ -373,6 +374,7 @@ export class CursorExecutor extends BaseExecutor {
       }
 
       if (result.text) totalContent += result.text;
+      if (result.thinking) totalThinking += result.thinking;
     }
 
     debugLog(
@@ -402,6 +404,10 @@ export class CursorExecutor extends BaseExecutor {
       role: "assistant",
       content: totalContent || null
     };
+
+    if (totalThinking) {
+      message.reasoning_content = totalThinking;
+    }
 
     if (toolCalls.length > 0) {
       message.tool_calls = toolCalls;
@@ -435,6 +441,7 @@ export class CursorExecutor extends BaseExecutor {
     const chunks = [];
     let offset = 0;
     let totalContent = "";
+    let totalThinking = "";
     const toolCalls = [];
     const toolCallsMap = new Map(); // Track streaming tool calls by ID
     const finalizedIds = new Set();
@@ -629,6 +636,25 @@ export class CursorExecutor extends BaseExecutor {
                   chunks.length === 0 && toolCalls.length === 0
                     ? { role: "assistant", content: result.text }
                     : { content: result.text },
+                finish_reason: null
+              }
+            ]
+          })}\n\n`
+        );
+      }
+
+      if (result.thinking) {
+        totalThinking += result.thinking;
+        chunks.push(
+          `data: ${JSON.stringify({
+            id: responseId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: { reasoning_content: result.thinking },
                 finish_reason: null
               }
             ]

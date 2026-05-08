@@ -189,6 +189,13 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     translatedResponse.usage = filterUsageForFormat(addBufferToUsage(translatedResponse.usage), sourceFormat);
   }
 
+  // Extract thinking/reasoning BEFORE stripping (for request-detail capture)
+  const thinkingContent =
+    translatedResponse?.choices?.[0]?.message?.reasoning_content ||
+    translatedResponse?.choices?.[0]?.message?.reasoning ||
+    translatedResponse?.reasoning_content ||
+    null;
+
   // Strip reasoning_content — some clients (e.g. Firecrawl AI SDK) have JSON parsers that
   // break on this non-standard field, even though OpenAI allows it in extensions.
   if (translatedResponse?.choices) {
@@ -209,7 +216,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     providerResponse: responseBody || null,
     response: {
       content: translatedResponse?.choices?.[0]?.message?.content || translatedResponse?.content || null,
-      thinking: translatedResponse?.choices?.[0]?.message?.reasoning_content || translatedResponse?.reasoning_content || null,
+      thinking: thinkingContent,
       finish_reason: translatedResponse?.choices?.[0]?.finish_reason || "unknown"
     },
     status: "success"
