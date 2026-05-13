@@ -19,6 +19,7 @@ import { detectFormatByEndpoint } from "open-sse/translator/formats.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection } from "open-sse/services/projectId.js";
+import { preprocessWebFetch } from "./webFetchPreprocess.js";
 
 function stringifyPromptValue(value) {
   if (value == null) return "";
@@ -148,6 +149,12 @@ export async function handleChat(request, clientRawRequest = null) {
   if (!modelStr) {
     log.warn("CHAT", "Missing model");
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
+  }
+
+  try {
+    await preprocessWebFetch(body);
+  } catch (e) {
+    log.warn("WEB_FETCH", `preprocess failed: ${e?.message || e}`);
   }
 
   // Bypass naming/warmup requests before combo rotation to avoid wasting rotation slots

@@ -3,6 +3,40 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { marked } from "marked";
+
+marked.setOptions({ gfm: true, breaks: true });
+
+function extractContentFromJson(data) {
+  if (!data) return "";
+  const choice = data.choices?.[0];
+  if (choice?.message?.content) {
+    const c = choice.message.content;
+    if (typeof c === "string") return c;
+    if (Array.isArray(c)) return c.map((p) => (typeof p === "string" ? p : p?.text || "")).join("");
+  }
+  if (choice?.delta?.content) return choice.delta.content;
+  if (typeof data.content === "string") return data.content;
+  return "";
+}
+
+function extractContentFromSSE(sseText) {
+  let out = "";
+  for (const line of sseText.split("\n")) {
+    const t = line.trim();
+    if (!t.startsWith("data:")) continue;
+    const payload = t.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const obj = JSON.parse(payload);
+      const delta = obj.choices?.[0]?.delta?.content;
+      if (typeof delta === "string") out += delta;
+      else if (Array.isArray(delta)) out += delta.map((p) => p?.text || "").join("");
+      else if (obj.choices?.[0]?.message?.content) out += obj.choices[0].message.content;
+    } catch {}
+  }
+  return out;
+}
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
@@ -50,6 +84,7 @@ function ExampleCard({ combos }) {
   const [collapsed, setCollapsed] = useState(false);
   const { copied: copiedCurl, copy: copyCurl } = useCopyToClipboard();
   const { copied: copiedRes, copy: copyRes } = useCopyToClipboard();
+  const { copied: copiedMd, copy: copyMd } = useCopyToClipboard();
 
   useEffect(() => {
     setLocalEndpoint(window.location.origin);
@@ -93,7 +128,9 @@ function ExampleCard({ combos }) {
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -d '${JSON.stringify(requestBody)}'`;
-  const resultJson = result ? JSON.stringify(result.data, null, 2) : "";
+  const resultJson = result ? (result.raw ?? JSON.stringify(result.data, null, 2)) : "";
+  const resultContent = result?.content ?? "";
+  const resultHtml = resultContent ? marked.parse(resultContent) : "";
 
   const handleRun = async () => {
     if (!selectedCombo || !prompt.trim()) return;
@@ -110,6 +147,40 @@ function ExampleCard({ combos }) {
         headers,
         body: JSON.stringify(requestBody),
       });
+
+      if (streamMode && res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let content = "";
+        let raw = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          raw += chunk;
+          buffer += chunk;
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            const t = line.trim();
+            if (!t.startsWith("data:")) continue;
+            const payload = t.slice(5).trim();
+            if (!payload || payload === "[DONE]") continue;
+            try {
+              const obj = JSON.parse(payload);
+              const delta = obj.choices?.[0]?.delta?.content;
+              if (typeof delta === "string") content += delta;
+              else if (Array.isArray(delta)) content += delta.map((p) => p?.text || "").join("");
+              else if (obj.choices?.[0]?.message?.content) content += obj.choices[0].message.content;
+            } catch {}
+          }
+          setResult({ data: null, raw, content, latencyMs: Date.now() - start, streaming: true });
+        }
+        setResult({ data: null, raw, content, latencyMs: Date.now() - start, streaming: false });
+        return;
+      }
+
       const latencyMs = Date.now() - start;
       const text = await res.text();
       let data = null;
@@ -123,7 +194,8 @@ function ExampleCard({ combos }) {
         setError(String(detail));
         return;
       }
-      setResult({ data, latencyMs });
+      const content = data?.raw ? extractContentFromSSE(data.raw) : extractContentFromJson(data);
+      setResult({ data, content, latencyMs });
     } catch (err) {
       setError(err.message || "Network error");
     } finally {
@@ -277,6 +349,34 @@ function ExampleCard({ combos }) {
           <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-sidebar px-3 py-2.5 font-mono text-xs text-text-main opacity-70">
             {result ? resultJson : DEFAULT_CHAT_RESPONSE_EXAMPLE}
           </pre>
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Content {result?.streaming && <span className="font-normal normal-case text-primary">· streaming…</span>}
+            </span>
+            {resultContent && (
+              <button
+                type="button"
+                onClick={() => copyMd(resultContent)}
+                className="inline-flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-primary"
+              >
+                <Icon name={copiedMd ? "check" : "content_copy"} className="text-[14px]" />
+                {copiedMd ? "Copied" : "Copy"}
+              </button>
+            )}
+          </div>
+          {resultContent ? (
+            <div
+              className="changelog-body overflow-x-auto rounded-lg bg-sidebar px-3 py-2.5 text-sm text-text-main"
+              dangerouslySetInnerHTML={{ __html: resultHtml }}
+            />
+          ) : (
+            <div className="rounded-lg bg-sidebar px-3 py-2.5 text-xs text-text-muted opacity-70">
+              Content sẽ hiển thị ở đây (markdown, GitHub style) sau khi chạy.
+            </div>
+          )}
         </div>
       </div>
       )}
