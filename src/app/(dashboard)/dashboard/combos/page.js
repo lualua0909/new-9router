@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle , Icon, ExampleFeatureToggles, applyExampleFeatures } from "@/shared/components";
+import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle , Icon, ExampleFeatureToggles, applyExampleFeatures, SegmentedControl } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { marked } from "marked";
 
@@ -17,6 +17,12 @@ function extractContentFromJson(data) {
   }
   if (choice?.delta?.content) return choice.delta.content;
   if (typeof data.content === "string") return data.content;
+  if (Array.isArray(data.content)) {
+    return data.content
+      .filter((part) => part?.type === "text" || typeof part === "string")
+      .map((part) => (typeof part === "string" ? part : part.text || ""))
+      .join("");
+  }
   return "";
 }
 
@@ -33,9 +39,45 @@ function extractContentFromSSE(sseText) {
       if (typeof delta === "string") out += delta;
       else if (Array.isArray(delta)) out += delta.map((p) => p?.text || "").join("");
       else if (obj.choices?.[0]?.message?.content) out += obj.choices[0].message.content;
+      else if (obj.type === "content_block_delta" && obj.delta?.type === "text_delta") out += obj.delta.text || "";
     } catch {}
   }
   return out;
+}
+
+function getStreamDeltaText(obj) {
+  const delta = obj.choices?.[0]?.delta?.content;
+  if (typeof delta === "string") return delta;
+  if (Array.isArray(delta)) return delta.map((p) => p?.text || "").join("");
+  if (obj.choices?.[0]?.message?.content) return obj.choices[0].message.content;
+  if (obj.type === "content_block_delta" && obj.delta?.type === "text_delta") return obj.delta.text || "";
+  return "";
+}
+
+function toAnthropicExampleBody(body) {
+  const next = { ...body };
+  delete next.reasoning_effort;
+
+  if (Array.isArray(next.tools)) {
+    const tools = [];
+    for (const tool of next.tools) {
+      if (tool?.type === "function" && tool.function) {
+        tools.push({
+          name: tool.function.name,
+          description: tool.function.description || "",
+          input_schema: tool.function.parameters || { type: "object", properties: {} },
+        });
+      } else if (tool?.type === "web_search") {
+        tools.push({ type: "web_search_20250305", name: "web_search" });
+      } else if (tool?.name || tool?.type) {
+        tools.push(tool);
+      }
+    }
+    if (tools.length > 0) next.tools = tools;
+    else delete next.tools;
+  }
+
+  return next;
 }
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 
@@ -51,7 +93,7 @@ function Row({ label, children }) {
   );
 }
 
-const DEFAULT_CHAT_RESPONSE_EXAMPLE = `{
+const DEFAULT_OPENAI_RESPONSE_EXAMPLE = `{
   "id": "chatcmpl-...",
   "object": "chat.completion",
   "choices": [{
@@ -62,6 +104,21 @@ const DEFAULT_CHAT_RESPONSE_EXAMPLE = `{
   "usage": { "prompt_tokens": 9, "completion_tokens": 12, "total_tokens": 21 }
 }`;
 
+const DEFAULT_ANTHROPIC_RESPONSE_EXAMPLE = `{
+  "id": "msg_...",
+  "type": "message",
+  "role": "assistant",
+  "content": [{ "type": "text", "text": "..." }],
+  "model": "combo-name",
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 9, "output_tokens": 12 }
+}`;
+
+const EXAMPLE_API_TABS = [
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+];
+
 function ExampleCard({ combos }) {
   const availableCombos = useMemo(
     () => combos.filter((combo) => (combo.models || []).length > 0),
@@ -71,6 +128,7 @@ function ExampleCard({ combos }) {
   const [prompt, setPrompt] = useState("Reply with a short hello from this combo.");
   const [maxTokens, setMaxTokens] = useState("128");
   const [streamMode, setStreamMode] = useState(false);
+  const [apiFormat, setApiFormat] = useState("openai");
   const [thinkingMode, setThinkingMode] = useState(false);
   const [webFetchMode, setWebFetchMode] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState(false);
@@ -114,7 +172,9 @@ function ExampleCard({ combos }) {
 
   const endpoint = useTunnel ? tunnelEndpoint : localEndpoint;
   const normalizedMaxTokens = Number(maxTokens);
-  const requestBody = applyExampleFeatures({
+  const isAnthropicFormat = apiFormat === "anthropic";
+  const apiPath = isAnthropicFormat ? "/v1/messages" : "/v1/chat/completions";
+  const baseRequestBody = applyExampleFeatures({
     model: selectedCombo || "combo-name",
     max_tokens: Number.isFinite(normalizedMaxTokens) && normalizedMaxTokens > 0 ? normalizedMaxTokens : 128,
     messages: [{ role: "user", content: prompt.trim() || "Hello" }],
@@ -124,9 +184,10 @@ function ExampleCard({ combos }) {
     webFetch: webFetchMode,
     webSearch: webSearchMode,
   });
-  const curlSnippet = `curl -X POST ${endpoint || "http://localhost:20128"}/v1/chat/completions \\
+  const requestBody = isAnthropicFormat ? toAnthropicExampleBody(baseRequestBody) : baseRequestBody;
+  const curlSnippet = `curl -X POST ${endpoint || "http://localhost:20128"}${apiPath} \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
+  ${isAnthropicFormat ? `-H "anthropic-version: 2023-06-01" \\\n  ` : ""}-H "Authorization: Bearer ${apiKey || "YOUR_KEY"}"${streamMode ? ` \\\n  -H "Accept: text/event-stream"` : ""} \\
   -d '${JSON.stringify(requestBody)}'`;
   const resultJson = result ? (result.raw ?? JSON.stringify(result.data, null, 2)) : "";
   const resultContent = result?.content ?? "";
@@ -140,9 +201,10 @@ function ExampleCard({ combos }) {
     const start = Date.now();
     try {
       const headers = { "Content-Type": "application/json" };
+      if (isAnthropicFormat) headers["anthropic-version"] = "2023-06-01";
       if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
       if (streamMode) headers.Accept = "text/event-stream";
-      const res = await fetch("/api/v1/chat/completions", {
+      const res = await fetch(`/api${apiPath}`, {
         method: "POST",
         headers,
         body: JSON.stringify(requestBody),
@@ -169,10 +231,7 @@ function ExampleCard({ combos }) {
             if (!payload || payload === "[DONE]") continue;
             try {
               const obj = JSON.parse(payload);
-              const delta = obj.choices?.[0]?.delta?.content;
-              if (typeof delta === "string") content += delta;
-              else if (Array.isArray(delta)) content += delta.map((p) => p?.text || "").join("");
-              else if (obj.choices?.[0]?.message?.content) content += obj.choices[0].message.content;
+              content += getStreamDeltaText(obj);
             } catch {}
           }
           setResult({ data: null, raw, content, latencyMs: Date.now() - start, streaming: true });
@@ -217,6 +276,17 @@ function ExampleCard({ combos }) {
       </div>
       {!collapsed && (
       <div className="flex flex-col gap-2.5 mt-4">
+        <SegmentedControl
+          options={EXAMPLE_API_TABS}
+          value={apiFormat}
+          onChange={(value) => {
+            setApiFormat(value);
+            setResult(null);
+            setError("");
+          }}
+          className="w-full sm:w-auto"
+        />
+
         <Row label="Combo">
           <select
             value={selectedCombo}
@@ -347,7 +417,7 @@ function ExampleCard({ combos }) {
             )}
           </div>
           <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-sidebar px-3 py-2.5 font-mono text-xs text-text-main opacity-70">
-            {result ? resultJson : DEFAULT_CHAT_RESPONSE_EXAMPLE}
+            {result ? resultJson : (isAnthropicFormat ? DEFAULT_ANTHROPIC_RESPONSE_EXAMPLE : DEFAULT_OPENAI_RESPONSE_EXAMPLE)}
           </pre>
         </div>
 

@@ -8,6 +8,12 @@ import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
+import {
+  claudeMessageToOpenAIChatCompletion,
+  isClaudeMessageResponse,
+  normalizeClaudeMessage,
+  openAIChatCompletionToClaudeMessage,
+} from "../../translator/helpers/claudeMessageHelper.js";
 
 /**
  * Translate non-streaming response body from provider format → OpenAI format.
@@ -70,51 +76,9 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
     return result;
   }
 
-  // Claude
+  // Claude provider → OpenAI client (provider format is CLAUDE)
   if (targetFormat === FORMATS.CLAUDE) {
-    if (!responseBody.content) return responseBody;
-
-    let textContent = "", thinkingContent = "";
-    const toolCalls = [];
-
-    for (const block of responseBody.content) {
-      if (block.type === "text") {
-        // Strip markdown code block markers (e.g. kimi wraps JSON in ```json...```)
-        const raw = block.text ?? "";
-        const text = raw.replace(/^\s*```\s*json\s*\n?/i, "").replace(/\n?\s*```\s*$/i, "");
-        textContent += text;
-      } else if (block.type === "thinking") thinkingContent += block.thinking || "";
-      else if (block.type === "tool_use") {
-        toolCalls.push({ id: block.id, type: "function", function: { name: block.name, arguments: JSON.stringify(block.input || {}) } });
-      }
-    }
-
-    const message = { role: "assistant" };
-    if (textContent) message.content = textContent;
-    if (thinkingContent) message.reasoning_content = thinkingContent;
-    if (toolCalls.length > 0) message.tool_calls = toolCalls;
-    if (!message.content && !message.tool_calls) message.content = "";
-
-    let finishReason = responseBody.stop_reason || "stop";
-    if (finishReason === "end_turn") finishReason = "stop";
-    if (finishReason === "tool_use") finishReason = "tool_calls";
-
-    const result = {
-      id: `chatcmpl-${responseBody.id || Date.now()}`,
-      object: "chat.completion",
-      created: Math.floor(Date.now() / 1000),
-      model: responseBody.model || "claude",
-      choices: [{ index: 0, message, finish_reason: finishReason }]
-    };
-
-    if (responseBody.usage) {
-      result.usage = {
-        prompt_tokens: responseBody.usage.input_tokens || 0,
-        completion_tokens: responseBody.usage.output_tokens || 0,
-        total_tokens: (responseBody.usage.input_tokens || 0) + (responseBody.usage.output_tokens || 0)
-      };
-    }
-    return result;
+    return claudeMessageToOpenAIChatCompletion(responseBody);
   }
 
   // Ollama
@@ -123,6 +87,20 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
   }
 
   return responseBody;
+}
+
+function translateResponseForClient(responseBody, providerFormat, clientFormat, model) {
+  // Client expects Anthropic Messages API shape
+  if (clientFormat === FORMATS.CLAUDE) {
+    if (providerFormat === FORMATS.CLAUDE || isClaudeMessageResponse(responseBody)) {
+      return normalizeClaudeMessage(responseBody, model);
+    }
+    return openAIChatCompletionToClaudeMessage(responseBody, model);
+  }
+
+  // OpenAI client: preserve original provider → OpenAI translation path
+  if (providerFormat === clientFormat) return responseBody;
+  return translateNonStreamingResponse(responseBody, providerFormat, clientFormat);
 }
 
 /**
@@ -162,8 +140,8 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
   saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint });
 
   const translatedResponse = needsTranslation(targetFormat, sourceFormat)
-    ? translateNonStreamingResponse(responseBody, targetFormat, sourceFormat)
-    : responseBody;
+    ? translateResponseForClient(responseBody, targetFormat, sourceFormat, model)
+    : (sourceFormat === FORMATS.CLAUDE ? normalizeClaudeMessage(responseBody, model) : responseBody);
 
   // Fix finish_reason for tool_calls: some providers return non-standard values (e.g. "other")
   if (translatedResponse?.choices?.[0]) {
@@ -175,9 +153,18 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     }
   }
 
-  // Ensure OpenAI-required fields
-  if (!translatedResponse.object) translatedResponse.object = "chat.completion";
-  if (!translatedResponse.created) translatedResponse.created = Math.floor(Date.now() / 1000);
+  // Fix stop_reason when provider returned tool_use blocks without stop_reason
+  if (translatedResponse?.type === "message" && !translatedResponse.stop_reason) {
+    const hasToolUse = Array.isArray(translatedResponse.content)
+      && translatedResponse.content.some((block) => block.type === "tool_use");
+    translatedResponse.stop_reason = hasToolUse ? "tool_use" : "end_turn";
+  }
+
+  // Ensure OpenAI-required fields for OpenAI clients only
+  if (sourceFormat !== FORMATS.CLAUDE) {
+    if (!translatedResponse.object) translatedResponse.object = "chat.completion";
+    if (!translatedResponse.created) translatedResponse.created = Math.floor(Date.now() / 1000);
+  }
 
   // Strip Azure-specific fields
   delete translatedResponse.prompt_filter_results;
@@ -217,7 +204,9 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     response: {
       content: translatedResponse?.choices?.[0]?.message?.content || translatedResponse?.content || null,
       thinking: thinkingContent,
-      finish_reason: translatedResponse?.choices?.[0]?.finish_reason || "unknown"
+      finish_reason: translatedResponse?.choices?.[0]?.finish_reason
+        || translatedResponse?.stop_reason
+        || "unknown"
     },
     status: "success"
   }, { endpoint: clientRawRequest?.endpoint || null })).catch(err => {
