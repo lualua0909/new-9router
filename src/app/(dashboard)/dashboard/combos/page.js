@@ -4,55 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, Toggle , Icon, ExampleFeatureToggles, applyExampleFeatures, SegmentedControl } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { marked } from "marked";
+import { extractContentFromJson, extractContentFromSSE, getStreamDeltaText } from "@/shared/utils/extractResponseContent";
 
 marked.setOptions({ gfm: true, breaks: true });
-
-function extractContentFromJson(data) {
-  if (!data) return "";
-  const choice = data.choices?.[0];
-  if (choice?.message?.content) {
-    const c = choice.message.content;
-    if (typeof c === "string") return c;
-    if (Array.isArray(c)) return c.map((p) => (typeof p === "string" ? p : p?.text || "")).join("");
-  }
-  if (choice?.delta?.content) return choice.delta.content;
-  if (typeof data.content === "string") return data.content;
-  if (Array.isArray(data.content)) {
-    return data.content
-      .filter((part) => part?.type === "text" || typeof part === "string")
-      .map((part) => (typeof part === "string" ? part : part.text || ""))
-      .join("");
-  }
-  return "";
-}
-
-function extractContentFromSSE(sseText) {
-  let out = "";
-  for (const line of sseText.split("\n")) {
-    const t = line.trim();
-    if (!t.startsWith("data:")) continue;
-    const payload = t.slice(5).trim();
-    if (!payload || payload === "[DONE]") continue;
-    try {
-      const obj = JSON.parse(payload);
-      const delta = obj.choices?.[0]?.delta?.content;
-      if (typeof delta === "string") out += delta;
-      else if (Array.isArray(delta)) out += delta.map((p) => p?.text || "").join("");
-      else if (obj.choices?.[0]?.message?.content) out += obj.choices[0].message.content;
-      else if (obj.type === "content_block_delta" && obj.delta?.type === "text_delta") out += obj.delta.text || "";
-    } catch {}
-  }
-  return out;
-}
-
-function getStreamDeltaText(obj) {
-  const delta = obj.choices?.[0]?.delta?.content;
-  if (typeof delta === "string") return delta;
-  if (Array.isArray(delta)) return delta.map((p) => p?.text || "").join("");
-  if (obj.choices?.[0]?.message?.content) return obj.choices[0].message.content;
-  if (obj.type === "content_block_delta" && obj.delta?.type === "text_delta") return obj.delta.text || "";
-  return "";
-}
 
 function toAnthropicExampleBody(body) {
   const next = { ...body };
